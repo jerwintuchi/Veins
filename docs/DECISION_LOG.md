@@ -73,3 +73,17 @@
 **Rejected**: Manual-aim-only (too punishing for casual mobile players); auto-aim-only (removes strategic targeting for boss fights with minions).
 **Reason**: Mirrors Vampire Survivors' proven model — lowers skill floor for casual players, preserves ceiling for players who need to prioritize targets (e.g., targeting a specific minion during a boss fight). Desktop (mouse) is always explicit aim; the system applies primarily to mobile touch input.
 **Auto-aim priority rule**: Nearest enemy (Euclidean distance from player position). No cone bias — enemies can approach from any direction, so a directional cone would create unfair dead zones. Lowest HP and highest threat rejected: counterintuitive during chaotic fights. To be implemented in the controls spec.
+
+---
+
+## 2026-06-14 — Board Logic: Pure Functions Returning Result Objects
+**Decision**: All Circulatory Board operations (`placeRelic`, `reviveWithLinkedFates`, `advanceFloor`, `evaluateSynergies`) are pure functions. They take current state plus a request and return a new state plus a discriminated-union result (`{ ok: true, board, event } | { ok: false, error }`). They never mutate inputs and never touch Socket.io directly.
+**Reason**: Keeps the entire game-logic core testable without a live server (44 tests, zero mocks of network code). The eventual Socket.io handlers become thin plumbing: validate via the pure function, then emit the returned event(s). Immutability also makes desync debugging tractable, since prior state is never destroyed in place.
+**Related**: Linked Fates returns its two events as an ordered tuple type `[RELIC_REMOVED, RELIC_PLACED]`, making the spec's required emit order (R6) impossible to violate at compile time, not just at test time.
+
+---
+
+## 2026-06-14 — Circulatory Board Spec Complete
+**Decision**: First spec (Circulatory Board) is fully implemented. T1 through T6 done, 44 tests passing, clean typecheck.
+**Coverage**: R1 (board state), R2 (placement + validation), R3 (synergy adjacency), R4 (server-authoritative synergy), R5 (board persists across floors), R6 (Linked Fates), R7 (deterministic synergy). All five correctness properties (P1 to P5) have dedicated tests.
+**Note**: Socket.io wiring is deliberately deferred. The logic is complete and tested; the network layer is thin plumbing to be added when the multiplayer lobby/room spec begins. `SocketLike` interface in `room/sync.ts` is the seam.

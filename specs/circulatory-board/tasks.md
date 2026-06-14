@@ -37,13 +37,13 @@ Each task cites R# and names its test before implementation begins.
   - Reviver with no relics: revive rejected, no state mutation, error to requesting socket
   - Synergy re-evaluated and included in `RELIC_PLACED` event
 
-- [ ] T5 [R1, R5] — Implement `BOARD_STATE_SYNC` emission on room join in `src/server/src/room/sync.ts`. Sends full board snapshot to joining socket only.
+- [x] T5 [R1, R5] — Implement `BOARD_STATE_SYNC` emission on room join in `src/server/src/room/sync.ts`. Sends full board snapshot to joining socket only.
   Test: `src/server/src/room/sync.test.ts`
   - Joining player receives `BOARD_STATE_SYNC` with complete `board`, `synergyMap`, `relicRegistry`
   - Only the joining socket receives this event (not the whole room)
   - `synergyMap` in the sync event is computed fresh (not cached from last event)
 
-- [ ] T6 [R5] — Verify floor transition does not mutate board in `src/server/src/room/state.ts`. Add floor transition logic if not present; add guard ensuring board is not reset.
+- [x] T6 [R5] — Verify floor transition does not mutate board in `src/server/src/room/state.ts`. Add floor transition logic if not present; add guard ensuring board is not reset.
   Test: `src/server/src/room/state.test.ts`
   - Board state before floor transition === board state after floor transition (deep equality)
   - Floor number increments; board slots unchanged

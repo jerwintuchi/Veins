@@ -126,14 +126,14 @@ All procedural logic (dungeon gen, synergy evaluation, loot rolls) runs server-s
 - [x] Shared type system (`HexCoord`, `RelicBoard`, `SynergyMap`)
 - [x] Agent roster (netcode-engineer, gameplay-designer, spec-writer, code-reviewer)
 
-**Circulatory Board** *(active)*
+**Circulatory Board** *(complete — 44 tests passing)*
 - [x] Requirements (R1-R7) + design (types, algorithms, Socket.io events)
-- [ ] T1: `hexNeighbors` + `hexCoordKey` with tests
-- [ ] T2: `evaluateSynergies` (pure, deterministic) with property tests
-- [ ] T3: Relic placement handler + `RELIC_PLACED` event
-- [ ] T4: Linked Fates revive mechanic
-- [ ] T5: `BOARD_STATE_SYNC` on room join
-- [ ] T6: Board persistence across floor transitions
+- [x] T1: `hexNeighbors` + `hexCoordKey` with tests
+- [x] T2: `evaluateSynergies` (pure, deterministic) with property tests
+- [x] T3: Relic placement handler + `RELIC_PLACED` event
+- [x] T4: Linked Fates revive mechanic
+- [x] T5: `BOARD_STATE_SYNC` on room join
+- [x] T6: Board persistence across floor transitions
 
 **Up next**
 - [ ] Dungeon generation (seeded BSP)
