@@ -36,3 +36,16 @@ export type RelicRemovedEvent = {
   relicId: RelicId;
   reason: 'linked-fates' | 'run-end';
 };
+
+// Client -> Server: reviver sacrifices a relic to revive a downed teammate
+export type LinkedFatesRequest = {
+  reviverId: PlayerId;
+  sourceCoord: HexCoord; // reviver's slot holding the relic to sacrifice
+  targetCoord: HexCoord; // downed teammate's slot to receive it
+};
+
+// Server -> Socket (targeted error for a failed revive)
+export type LinkedFatesErrorEvent = {
+  code: 'INVALID_COORD' | 'NOT_OWNER' | 'NO_RELIC' | 'SLOT_OCCUPIED';
+  message: string;
+};

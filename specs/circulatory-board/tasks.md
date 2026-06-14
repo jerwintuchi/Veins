@@ -29,7 +29,7 @@ Each task cites R# and names its test before implementation begins.
   - Invalid coord (not on board): no state mutation, error emitted, `code: 'INVALID_COORD'`
   - Placement updates synergy for ALL relics on board, not just the newly placed one
 
-- [ ] T4 [R6] — Implement Linked Fates revive mechanic in `src/server/src/board/linkedFates.ts`. Validates reviver has a relic to sacrifice, removes it from reviver slot, places it in downed player slot, emits events.
+- [x] T4 [R6] — Implement Linked Fates revive mechanic in `src/server/src/board/linkedFates.ts`. Validates reviver has a relic to sacrifice, removes it from reviver slot, places it in downed player slot, emits events.
   Test: `src/server/src/board/linkedFates.test.ts`
   - `RELIC_REMOVED` emitted (with `reason: 'linked-fates'`) before `RELIC_PLACED`
   - Sacrificed relic is absent from reviver's slot after operation
