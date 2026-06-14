@@ -12,7 +12,7 @@ Each task cites R# and names its test before implementation begins.
   - `hexCoordKey` is injective: different coords produce different keys for all reasonable integer inputs
   - All types compile under `strict: true`
 
-- [ ] T2 [R3, R7, P1, P2, P3, P4, P5] — Implement `evaluateSynergies(board, registry)` in `src/server/src/board/synergy.ts`.
+- [x] T2 [R3, R7, P1, P2, P3, P4, P5] — Implement `evaluateSynergies(board, registry)` in `src/server/src/board/synergy.ts`.
   Test: `src/server/src/board/synergy.test.ts`
   - Same board + registry called twice → identical SynergyMap (P1 determinism)
   - Solo player with adjacent own-relics: no synergy fires (P2)
