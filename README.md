@@ -141,8 +141,14 @@ All procedural logic (dungeon gen, synergy evaluation, loot rolls) runs server-s
 - [x] Corridor connection (spanning tree, fully connected)
 - [x] `generateDungeon(runId, config)` (deterministic, < 5ms)
 
+**Multiplayer Lobby + Rooms** *(complete — 43 tests passing)*
+- [x] Lobby types + room codes (unambiguous alphabet, crypto-random)
+- [x] Hex board construction (radius-2, 19 cells, angular home regions)
+- [x] Placement hardening (server-authoritative ownership, no client spoofing)
+- [x] `RoomManager` (create/join/leave/start, ephemeral in-memory)
+- [x] Socket.io wiring (authoritative handlers, delta broadcasts)
+
 **Up next**
-- [ ] Multiplayer lobby + room codes (wires Socket.io to board + dungeon logic)
 - [ ] Enemy system + combat
 - [ ] Bleed Clock
 - [ ] Mobile controls (virtual joystick + auto-aim)

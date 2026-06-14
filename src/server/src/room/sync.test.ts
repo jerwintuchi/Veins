@@ -13,6 +13,10 @@ function makeRelic(id: string, tags: RelicTag[]): Relic {
 function makeRoom(slots: RelicSlot[], relics: Relic[]): Room {
   return {
     id: 'room1',
+    code: 'ROOM1',
+    hostId: 'p1',
+    status: 'in-progress',
+    runId: 'run-1',
     players: ['p1', 'p2'],
     board: { slots: Object.fromEntries(slots.map(s => [hexCoordKey(s.coord), s])) },
     registry: new Map(relics.map(r => [r.id, r])),

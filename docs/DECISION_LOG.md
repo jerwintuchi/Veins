@@ -113,3 +113,34 @@
 **Decision**: Dungeon Generation spec fully implemented. T1-T5 done, 23 tests passing (10 RNG + 13 BSP), clean typecheck.
 **Coverage**: R1 (determinism), R2 (multiple non-overlapping rooms), R3 (in-bounds), R4 (full connectivity via spanning-tree corridors), R5 (RNG-only, no Math.random/Date.now), R6 (<5ms perf, asserted), R7 (RNG determinism + ranges). Correctness properties P1-P5 each tested, with non-overlap, in-bounds, and connectivity also fuzzed across 50 distinct seeds.
 **Design note**: Corridors carry both room ids and geometric endpoints. The id graph makes connectivity provable/testable (BFS reaches all rooms); the geometry lets the client render L-shaped passages. BSP emits exactly (roomCount - 1) corridors = a spanning tree, so connectivity holds by construction. Socket.io `DUNGEON_LAYOUT` event deferred to the multiplayer/rooms spec.
+
+---
+
+## 2026-06-14 — Active Spec switched: Dungeon Generation -> Multiplayer Rooms
+**Decision**: Dungeon Generation complete; active spec swapped to Multiplayer Lobby + Rooms.
+**Reason**: This layer finally wires Socket.io to the unit-tested core (board + dungeon) and resolves the deferred placement-ownership hardening from the Circulatory Board review.
+
+---
+
+## 2026-06-14 — Placement Ownership Hardening (resolves deferred review note)
+**Decision**: `placeRelic` now takes the authoritative `playerId` (from the authenticated socket), and `PlaceRelicRequest` no longer carries a client-supplied `ownerId`. A player may only place into a slot they own (else `NOT_OWNER`); the emitted event reports `slot.ownerId` (server truth). The `revive` handler likewise forces `reviverId` to the authenticated player.
+**Reason**: Closes the trust gap flagged in the Circulatory Board code review. Identity is now server-derived everywhere, satisfying invariant I2 ("never trust client"). This is a breaking change to `placeRelic`'s signature and `PlaceRelicRequest`; placement tests updated accordingly.
+
+---
+
+## 2026-06-14 — Room Codes: node:crypto, not seeded RNG
+**Decision**: `generateRoomCode()` uses `node:crypto` (randomInt) over an unambiguous alphabet (no O/0/I/1), 5 chars.
+**Reason**: Room codes need uniqueness and unpredictability, NOT reproducibility, so they sit outside invariant I3's seeded-RNG mandate (which exists for reproducible procedural game state). Using the seeded RNG here would make codes predictable. The unambiguous alphabet makes codes easy to read aloud and type.
+
+---
+
+## 2026-06-14 — Home Quadrants: angular sector partition
+**Decision**: Board ownership is assigned by sorting the 18 outer hex cells by angle around the origin and splitting into N contiguous arcs (one per player); the center cell goes to the first player.
+**Reason**: Contiguous arcs give each player a coherent "home region" while guaranteeing that different players' regions border each other, so cross-player adjacency (and therefore synergy) always exists regardless of player count (2-4). Deterministic.
+
+---
+
+## 2026-06-14 — Multiplayer Lobby + Rooms spec complete
+**Decision**: Multiplayer spec fully implemented. T1-T6 done, 43 new tests (110 total across the project), clean typecheck.
+**Coverage**: R1 (create + unique codes), R2 (join + all four rejections), R3 (leave/cleanup/host reassignment), R4 (run lifecycle + deterministic dungeon), R5 (19-cell board, total ownership, cross-player adjacency), R6 (server-authoritative ownership), R7 (validated Socket.io handlers, delta broadcasts).
+**Design note**: Socket.io wiring is typed against minimal `SocketIOServerLike`/`ServerSocket` interfaces so the handler logic is fully testable with fakes (smoke + flow tests pass); the real socket.io Server is cast at a single boundary in `startServer`. Production bootstrap is guarded by an `isMain` check so importing the module under tests never opens a port. Rooms remain ephemeral and in-memory (I7).

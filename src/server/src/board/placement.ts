@@ -1,4 +1,4 @@
-import type { RelicBoard, Relic, RelicId } from '@veins/shared';
+import type { RelicBoard, Relic, RelicId, PlayerId } from '@veins/shared';
 import type {
   PlaceRelicRequest,
   GamePhase,
@@ -21,9 +21,13 @@ export type PlaceRelicFailure = {
 
 export type PlaceRelicResult = PlaceRelicSuccess | PlaceRelicFailure;
 
+// `playerId` is the authenticated, server-side identity of the requester (from
+// the socket session), never a client-supplied field. A player may only place
+// into a slot they own, and the emitted event reports the slot's true owner.
 export function placeRelic(
   board: RelicBoard,
   request: PlaceRelicRequest,
+  playerId: PlayerId,
   phase: GamePhase,
   registry: Map<RelicId, Relic>
 ): PlaceRelicResult {
@@ -41,6 +45,13 @@ export function placeRelic(
     return {
       ok: false,
       error: { code: 'INVALID_COORD', message: 'That coordinate is not on the board.' },
+    };
+  }
+
+  if (slot.ownerId !== playerId) {
+    return {
+      ok: false,
+      error: { code: 'NOT_OWNER', message: 'You can only place relics in your own slots.' },
     };
   }
 
@@ -64,7 +75,7 @@ export function placeRelic(
     event: {
       coord: request.coord,
       relicId: request.relicId,
-      ownerId: request.ownerId,
+      ownerId: slot.ownerId, // server truth, not a client claim
       synergyMap: evaluateSynergies(newBoard, registry),
     },
   };

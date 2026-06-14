@@ -1,4 +1,4 @@
-import type { RelicBoard, Relic, RelicId, PlayerId, GamePhase } from '@veins/shared';
+import type { RelicBoard, Relic, RelicId, PlayerId, GamePhase, RoomCode, RoomStatus } from '@veins/shared';
 
 // Minimal Bleed Clock state. The full mechanic gets its own spec later;
 // this exists now only so floor transitions have something to update (T6).
@@ -11,6 +11,10 @@ export type BleedClock = {
 // In-memory game state for one room. Never persisted (netcode invariant I7).
 export type Room = {
   id: string;
+  code: RoomCode;
+  hostId: PlayerId;
+  status: RoomStatus;
+  runId: string;
   players: PlayerId[];
   board: RelicBoard;
   registry: Map<RelicId, Relic>;

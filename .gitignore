@@ -3,3 +3,8 @@ dist/
 .env
 .env.local
 *.tsbuildinfo
+
+# Local-only editor/agent settings and scratch files
+.claude/settings.local.json
+.vscode/
+CARRYOVER_PROMPT.txt

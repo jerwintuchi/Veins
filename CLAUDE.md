@@ -13,9 +13,9 @@
 
 ## Active Spec
 <!-- SWAP THESE THREE LINES when switching features — one of the few times you edit this file -->
-@specs/dungeon-generation/requirements.md
-@specs/dungeon-generation/design.md
-@specs/dungeon-generation/tasks.md
+@specs/multiplayer-rooms/requirements.md
+@specs/multiplayer-rooms/design.md
+@specs/multiplayer-rooms/tasks.md
 
 ## Workflow Rules
 @.claude/rules/spec-workflow.md

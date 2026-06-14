@@ -2,11 +2,11 @@ import type { HexCoord, RelicId, PlayerId, SynergyMap, RelicBoard, Relic } from 
 
 export type GamePhase = 'loot' | 'combat' | 'transition';
 
-// Client -> Server
+// Client -> Server. Note: no ownerId — the placing player's identity comes from
+// the authenticated socket server-side, never a client-supplied field (I2).
 export type PlaceRelicRequest = {
   coord: HexCoord;
   relicId: RelicId;
-  ownerId: PlayerId;
 };
 
 // Server -> Room (broadcast)
@@ -19,7 +19,7 @@ export type RelicPlacedEvent = {
 
 // Server -> Socket (targeted error)
 export type RelicPlaceErrorEvent = {
-  code: 'SLOT_OCCUPIED' | 'WRONG_PHASE' | 'INVALID_COORD';
+  code: 'SLOT_OCCUPIED' | 'WRONG_PHASE' | 'INVALID_COORD' | 'NOT_OWNER';
   message: string;
 };
 
