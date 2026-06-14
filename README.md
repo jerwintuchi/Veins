@@ -5,7 +5,7 @@
 
 ### *A roguelike you literally cannot beat by yourself.*
 
-A browser-based 2–4 player co-op action roguelike where the party shares **one** hexagonal relic board — and synergies only fire when your relic is touching a teammate's.
+A browser-based 2-4 player co-op action roguelike where the party shares **one** hexagonal relic board, and synergies only fire when your relic is touching a teammate's.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
@@ -24,9 +24,9 @@ A browser-based 2–4 player co-op action roguelike where the party shares **one
 
 ## The Problem With Every Co-op Roguelike
 
-In Hades, you play alone. In Enter the Gungeon, two players each have their own gun. In Risk of Rain 2, items stack on *your* character — a teammate's items don't interact with yours.
+In Hades, you play alone. In Enter the Gungeon, two players each have their own gun. In Risk of Rain 2, items stack on *your* character; a teammate's items don't interact with yours.
 
-Every co-op roguelike treats the party as **N solo players who happen to share a screen.** The build space is additive, not combinatorial. You optimise *yourself.*
+Every co-op roguelike treats the party as N solo players who happen to share a screen. The build space is additive, not combinatorial. You optimise *yourself.*
 
 **Veins breaks this.**
 
@@ -34,7 +34,7 @@ Every co-op roguelike treats the party as **N solo players who happen to share a
 
 ## The Circulatory Board
 
-The party shares **one hexagonal relic board.** Each player owns slots on it — but relics only fire their strongest (synergy) effect when adjacent to a compatible relic owned by a *different* player.
+The party shares **one hexagonal relic board.** Each player owns slots on it, but relics only fire their strongest (synergy) effect when adjacent to a compatible relic owned by a *different* player.
 
 ```
         [ P1: Ember Core ]
@@ -49,8 +49,8 @@ The party shares **one hexagonal relic board.** Each player owns slots on it —
 ```
 
 In the board above:
-- **Ember Core** (P1) is adjacent to **Chain Bolt** (P3) — both share `aoe`. **Both synergies fire.**
-- **Thornwall** (P2) is adjacent to **Ember Core** — no shared tag. No synergy.
+- **Ember Core** (P1) is adjacent to **Chain Bolt** (P3): both share `aoe`, so **both synergies fire.**
+- **Thornwall** (P2) is adjacent to **Ember Core**: no shared tag, so no synergy.
 
 The build space is **combinatorial across players**, not additive per player. You're not optimising your character. You're optimising the **party organism.**
 
@@ -59,27 +59,27 @@ The build space is **combinatorial across players**, not additive per player. Yo
 ## Supporting Mechanics
 
 ### 🩸 Bleed Clock
-The dungeon has a global HP bar draining in real time — faster the deeper you go. Loot scales with depth.
+The dungeon has a global HP bar draining in real time, faster the deeper you go. Loot scales with depth.
 
 Every floor is a group negotiation: *"Do we extract now or push one more room?"* FTL-style dread, but shared and vocal. One greedy teammate can wipe the run.
 
 ### 💀 Linked Fates
 Reviving a downed teammate costs **one of your own relics**, sacrificed into their board slot.
 
-Death mid-run doesn't just remove a player — it **reshapes the party build.** The board you planned ten minutes ago is gone. Adapt or die.
+Death mid-run doesn't just remove a player; it **reshapes the party build.** The board you planned ten minutes ago is gone. Adapt or die.
 
 ---
 
 ## How a Run Feels
 
-1. **Lobby** — share a room code, 2–4 players join in browser
-2. **Descent** — seeded dungeon generated server-side; you fight, loot, place relics
-3. **Tension** — Bleed Clock ticks; deeper floors drain it faster; better loot waits below
-4. **Negotiation** — "I need a `fire` relic adjacent to my slot — who has one?"
-5. **Crisis** — someone goes down; the reviver sacrifices a relic; the build changes
-6. **Extract or die** — post-run meta-progression updates (unlocks, relic roster)
+1. **Lobby**: share a room code, 2-4 players join in browser
+2. **Descent**: seeded dungeon generated server-side; you fight, loot, place relics
+3. **Tension**: Bleed Clock ticks; deeper floors drain it faster; better loot waits below
+4. **Negotiation**: "I need a `fire` relic adjacent to my slot. Who has one?"
+5. **Crisis**: someone goes down; the reviver sacrifices a relic; the build changes
+6. **Extract or die**: post-run meta-progression updates (unlocks, relic roster)
 
-Sessions: **20–40 minutes.** Meta: **months.**
+Sessions: **20-40 minutes.** Meta: **months.**
 
 ---
 
@@ -119,21 +119,21 @@ All procedural logic (dungeon gen, synergy evaluation, loot rolls) runs server-s
 
 ## Project Status
 
-> Spec-driven development — every feature follows `R# → Design → T# → Test → Implementation`.
+> Spec-driven development: every feature follows `R# -> Design -> T# -> Test -> Implementation`.
 
 **Foundation**
 - [x] Workspace setup (pnpm workspaces, Vitest, strict TypeScript)
 - [x] Shared type system (`HexCoord`, `RelicBoard`, `SynergyMap`)
 - [x] Agent roster (netcode-engineer, gameplay-designer, spec-writer, code-reviewer)
 
-**Circulatory Board** ← *active*
-- [x] Requirements (R1–R7) + design (types, algorithms, Socket.io events)
-- [ ] T1 — `hexNeighbors` + `hexCoordKey` with tests
-- [ ] T2 — `evaluateSynergies` (pure, deterministic) with property tests
-- [ ] T3 — Relic placement handler + `RELIC_PLACED` event
-- [ ] T4 — Linked Fates revive mechanic
-- [ ] T5 — `BOARD_STATE_SYNC` on room join
-- [ ] T6 — Board persistence across floor transitions
+**Circulatory Board** *(active)*
+- [x] Requirements (R1-R7) + design (types, algorithms, Socket.io events)
+- [ ] T1: `hexNeighbors` + `hexCoordKey` with tests
+- [ ] T2: `evaluateSynergies` (pure, deterministic) with property tests
+- [ ] T3: Relic placement handler + `RELIC_PLACED` event
+- [ ] T4: Linked Fates revive mechanic
+- [ ] T5: `BOARD_STATE_SYNC` on room join
+- [ ] T6: Board persistence across floor transitions
 
 **Up next**
 - [ ] Dungeon generation (seeded BSP)
@@ -168,6 +168,6 @@ pnpm test
 
 <div align="center">
 
-*Built spec-first. Every mechanic is a requirement before it's a line of code.*
+*Built spec-first. Every mechanic is a requirement before it is a line of code.*
 
 </div>
