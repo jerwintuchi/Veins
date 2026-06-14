@@ -1,0 +1,16 @@
+{
+  "name": "veins",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter @veins/server dev",
+    "dev:client": "pnpm --filter @veins/client dev",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
+    "build": "pnpm --filter @veins/shared build && pnpm --filter @veins/server build && pnpm --filter @veins/client build"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}
