@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { DungeonLayout, LobbyErrorEvent, PlayerId, RoomCode } from '@veins/shared';
 import { MAX_PLAYERS, MIN_PLAYERS_TO_START, HEX_BOARD_RADIUS } from '@veins/shared';
+import type { BleedClockTickEvent, RunEndedEvent } from '@veins/shared';
 import { generateDungeon } from '../dungeon/bsp.js';
 import { buildInitialBoard } from '../board/layout.js';
+import { advanceBleedForRoom, extractRun } from '../bleed/clock.js';
 import { drainRateForFloor, type Room } from './state.js';
 import { generateRoomCode } from './roomCode.js';
 
@@ -58,6 +60,7 @@ export class RoomManager {
       phase: 'loot',
       floor: 0,
       bleedClock: { current: 0, max: 0, drainPerSecond: 0 },
+      outcome: null,
     };
     this.rooms.set(code, room);
     return { ok: true, room };
@@ -128,5 +131,27 @@ export class RoomManager {
     };
 
     return { ok: true, room, dungeon };
+  }
+
+  // Rooms with an active run — drives the Bleed Clock tick loop.
+  activeRooms(): Room[] {
+    return [...this.rooms.values()].filter(r => r.status === 'in-progress');
+  }
+
+  // Advances a room's Bleed Clock by dt seconds. Returns the tick (and a
+  // RUN_ENDED payload if the clock depleted), or undefined if no such room.
+  tickRoom(code: RoomCode, deltaSeconds: number):
+    | { tick: BleedClockTickEvent; ended: RunEndedEvent | null }
+    | undefined {
+    const room = this.rooms.get(code);
+    if (!room) return undefined;
+    return advanceBleedForRoom(room, deltaSeconds);
+  }
+
+  // Voluntary extraction. Ends an in-progress run as 'extracted'.
+  extractRoom(code: RoomCode): { ok: true; ended: RunEndedEvent } | { ok: false } {
+    const room = this.rooms.get(code);
+    if (!room) return { ok: false };
+    return extractRun(room);
   }
 }

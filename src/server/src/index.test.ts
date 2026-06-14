@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { registerHandlers, summarizeRoom, type ServerSocket, type SocketIOServerLike } from './index.js';
+import { registerHandlers, summarizeRoom, runBleedTick, type ServerSocket, type SocketIOServerLike } from './index.js';
 import { RoomManager } from './room/manager.js';
 import type { Room } from './room/state.js';
 
@@ -171,5 +171,66 @@ describe('registerHandlers wiring (smoke)', () => {
     const err = host.emits.find(e => e.event === 'LINKED_FATES_ERROR');
     expect(err).toBeDefined();
     expect((err!.payload as { code: string }).code).toBe('INVALID_COORD');
+  });
+});
+
+describe('Bleed Clock loop + extract wiring (T5)', () => {
+  function startedManager(code: string) {
+    const manager = new RoomManager({ generateCode: () => code, generateRunId: () => `run-${code}` });
+    const { room } = manager.createRoom('h1');
+    manager.joinRoom(room.code, 'p2');
+    manager.startRun(room.code);
+    return manager;
+  }
+
+  it('runBleedTick broadcasts BLEED_CLOCK_TICK to an active room', () => {
+    const { io, roomEmits } = makeFakeIo();
+    const manager = startedManager('TICK1');
+    runBleedTick(io, manager, 1);
+    const tick = roomEmits.find(e => e.event === 'BLEED_CLOCK_TICK');
+    expect(tick).toBeDefined();
+    expect(tick!.room).toBe('TICK1');
+  });
+
+  it('runBleedTick broadcasts RUN_ENDED (wiped) when the clock depletes', () => {
+    const { io, roomEmits } = makeFakeIo();
+    const manager = startedManager('TICK2');
+    const room = manager.getRoom('TICK2')!;
+    room.bleedClock.current = room.bleedClock.drainPerSecond; // one tick from empty
+    runBleedTick(io, manager, 1);
+    const ended = roomEmits.find(e => e.event === 'RUN_ENDED');
+    expect(ended).toBeDefined();
+    expect((ended!.payload as { outcome: string }).outcome).toBe('wiped');
+  });
+
+  it('extract handler broadcasts RUN_ENDED (extracted)', () => {
+    const { io, roomEmits, connect } = makeFakeIo();
+    const manager = new RoomManager({ generateCode: () => 'EXT1', generateRunId: () => 'run-ext1' });
+    registerHandlers(io, manager);
+
+    const host = makeFakeSocket('h1');
+    connect()!(host);
+    host.handlers.get('create-room')!(undefined);
+    const p2 = makeFakeSocket('p2');
+    connect()!(p2);
+    p2.handlers.get('join-room')!({ code: 'EXT1' });
+    host.handlers.get('start-run')!(undefined);
+
+    host.handlers.get('extract')!(undefined);
+    const ended = roomEmits.find(e => e.event === 'RUN_ENDED');
+    expect(ended).toBeDefined();
+    expect((ended!.payload as { outcome: string }).outcome).toBe('extracted');
+    expect(manager.getRoom('EXT1')?.status).toBe('ended');
+  });
+
+  it('extract handler rejects when the socket is not in a room', () => {
+    const { io, connect } = makeFakeIo();
+    registerHandlers(io, new RoomManager());
+    const sock = makeFakeSocket('lonely');
+    connect()!(sock);
+    sock.handlers.get('extract')!(undefined);
+    const err = sock.emits.find(e => e.event === 'LOBBY_ERROR');
+    expect(err).toBeDefined();
+    expect((err!.payload as { code: string }).code).toBe('NOT_IN_ROOM');
   });
 });

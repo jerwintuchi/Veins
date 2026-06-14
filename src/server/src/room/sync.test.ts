@@ -23,6 +23,7 @@ function makeRoom(slots: RelicSlot[], relics: Relic[]): Room {
     phase: 'loot',
     floor: 1,
     bleedClock: { current: 100, max: 100, drainPerSecond: 1 },
+    outcome: null,
   };
 }
 

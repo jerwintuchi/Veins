@@ -163,3 +163,60 @@ describe('RoomManager.startRun', () => {
     expect(res.dungeon).toEqual(generateDungeon('fixed-run'));
   });
 });
+
+describe('RoomManager — Bleed Clock integration', () => {
+  function startedRoom(mgr: RoomManager) {
+    const { room } = mgr.createRoom('h1');
+    mgr.joinRoom(room.code, 'p2');
+    mgr.startRun(room.code);
+    return room.code;
+  }
+
+  it('activeRooms returns only in-progress rooms', () => {
+    const mgr = new RoomManager({ generateCode: seqCodes() });
+    const lobbyOnly = mgr.createRoom('h1'); // stays in lobby
+    const code = startedRoom(mgr);
+
+    const active = mgr.activeRooms();
+    expect(active.map(r => r.code)).toContain(code);
+    expect(active.map(r => r.code)).not.toContain(lobbyOnly.room.code);
+  });
+
+  it('tickRoom drains the clock and ends the run on depletion', () => {
+    const mgr = new RoomManager({ generateCode: seqCodes() });
+    const code = startedRoom(mgr);
+    const room = mgr.getRoom(code)!;
+
+    const before = room.bleedClock.current;
+    const res = mgr.tickRoom(code, 1);
+    expect(res).toBeDefined();
+    expect(room.bleedClock.current).toBeLessThan(before);
+
+    // Drain it to zero and confirm the run ends as wiped.
+    room.bleedClock.current = room.bleedClock.drainPerSecond; // one tick from empty
+    const end = mgr.tickRoom(code, 1);
+    expect(end?.ended?.outcome).toBe('wiped');
+    expect(room.status).toBe('ended');
+  });
+
+  it('tickRoom returns undefined for an unknown room', () => {
+    const mgr = new RoomManager({ generateCode: seqCodes() });
+    expect(mgr.tickRoom('NOPE', 1)).toBeUndefined();
+  });
+
+  it('extractRoom ends an in-progress run as extracted', () => {
+    const mgr = new RoomManager({ generateCode: seqCodes() });
+    const code = startedRoom(mgr);
+    const res = mgr.extractRoom(code);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.ended.outcome).toBe('extracted');
+    expect(mgr.getRoom(code)?.status).toBe('ended');
+  });
+
+  it('extractRoom rejects a lobby (not in-progress) room', () => {
+    const mgr = new RoomManager({ generateCode: seqCodes() });
+    const { room } = mgr.createRoom('h1');
+    expect(mgr.extractRoom(room.code).ok).toBe(false);
+  });
+});

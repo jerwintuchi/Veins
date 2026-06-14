@@ -10,6 +10,7 @@ import type {
   PlayerId,
   RoomCode,
 } from '@veins/shared';
+import { BLEED_TICK_INTERVAL_MS } from '@veins/shared';
 import { RoomManager } from './room/manager.js';
 import type { Room } from './room/state.js';
 import { placeRelic } from './board/placement.js';
@@ -155,6 +156,20 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
       for (const e of result.events) io.to(room.code).emit(e.type, e.payload);
     });
 
+    socket.on('extract', () => {
+      const code = socket.data.roomCode;
+      if (!code) {
+        socket.emit('LOBBY_ERROR', { code: 'NOT_IN_ROOM', message: 'You are not in a room.' });
+        return;
+      }
+      const res = manager.extractRoom(code);
+      if (!res.ok) {
+        socket.emit('LOBBY_ERROR', { code: 'INVALID_REQUEST', message: 'No active run to extract from.' });
+        return;
+      }
+      io.to(code).emit('RUN_ENDED', res.ended);
+    });
+
     socket.on('disconnect', () => {
       const code = socket.data.roomCode;
       if (!code) return;
@@ -166,6 +181,17 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
   });
 }
 
+// One Bleed Clock step across all active rooms. Pure-ish (delegates to the
+// unit-tested manager/clock); exported so the loop can be driven in tests.
+export function runBleedTick(io: SocketIOServerLike, manager: RoomManager, deltaSeconds: number): void {
+  for (const room of manager.activeRooms()) {
+    const res = manager.tickRoom(room.code, deltaSeconds);
+    if (!res) continue;
+    io.to(room.code).emit('BLEED_CLOCK_TICK', res.tick);
+    if (res.ended) io.to(room.code).emit('RUN_ENDED', res.ended);
+  }
+}
+
 // Production bootstrap. Imported lazily so tests never open a port.
 export async function startServer(port: number): Promise<void> {
   const { Server } = await import('socket.io');
@@ -173,7 +199,9 @@ export async function startServer(port: number): Promise<void> {
   const manager = new RoomManager();
   // socket.io's Server is structurally richer than SocketIOServerLike; cast at
   // this single boundary so the handler logic stays transport-agnostic.
-  registerHandlers(io as unknown as SocketIOServerLike, manager);
+  const ioLike = io as unknown as SocketIOServerLike;
+  registerHandlers(ioLike, manager);
+  setInterval(() => runBleedTick(ioLike, manager, BLEED_TICK_INTERVAL_MS / 1000), BLEED_TICK_INTERVAL_MS);
   // eslint-disable-next-line no-console
   console.log(`Veins server listening on :${port}`);
 }

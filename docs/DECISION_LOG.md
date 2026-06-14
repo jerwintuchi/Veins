@@ -166,3 +166,19 @@
 **Decision**: Converted the `tools:` frontmatter in all four `.claude/agents/*.md` files from YAML-list form to the canonical comma-separated inline form (e.g. `tools: Read, Grep, Glob`).
 **Reason**: Per Claude Code docs, the documented format is comma-separated; the YAML-list form is not the standard and may not parse. This makes the agents correctly loadable.
 **Known limitation (not fixable in-repo)**: Custom subagents in `.claude/agents/` are discoverable/invocable in the Claude Code **terminal CLI** (verify with `/agents`), but the **VS Code extension / Agent SDK harness** only exposes built-in agent types (claude, claude-code-guide, Explore, general-purpose, Plan, statusline-setup) and rejects custom names with "Agent type not found" (tracked upstream as claude-code issue #24439). This is why both code reviews this session were run via `general-purpose` with the `code-reviewer` role injected, rather than invoking the agent directly. When using the terminal CLI, the four agents should be directly invocable.
+
+---
+
+## 2026-06-14 — Active Spec switched: Multiplayer Rooms -> Bleed Clock
+**Decision**: Multiplayer Rooms complete; active spec swapped to Bleed Clock (third core pillar).
+**Reason**: Most existing scaffolding (the `BleedClock` type + `drainRateForFloor` placeholders from the Circulatory Board floor-transition work) fed directly into it, making it the natural next build.
+
+---
+
+## 2026-06-14 — Bleed Clock spec complete
+**Decision**: Bleed Clock spec fully implemented. T1-T5 done, 24 new tests (135 total: 123 server + 12 shared), clean typecheck.
+**Coverage**: R1 (real-time drain), R2 (depth scaling), R3 (wipe on depletion), R4 (delta `BLEED_CLOCK_TICK` broadcast), R5 (clamp >= 0), R6 (descend raises drain but preserves current — tension carries over), R7 (voluntary extraction), R8 (pure deterministic tick). Properties P1-P5 each tested, including "terminal once" (an already-ended room is not re-ended).
+**Design notes**:
+- The `BleedClock` type moved from server `room/state.ts` to shared `bleedClock.ts` as `BleedClockState`, since the client must render it (I4). `Room` gained `outcome: RunOutcome | null`.
+- Drain math is a single pure function `tickBleedClock(clock, dt)`; room transitions (`advanceBleedForRoom`, `extractRun`) wrap it; `RoomManager` exposes `activeRooms/tickRoom/extractRoom`; the socket layer adds a `runBleedTick(io, manager, dt)` step (exported for tests) driven by a `setInterval` in `startServer` (guarded out of tests) plus an `extract` handler. Same thin-plumbing-over-pure-core pattern as prior specs.
+- Tuning (DUNGEON_START_HP=1000, drain rates) remains placeholder; balance belongs to a future gameplay-tuning pass, not this mechanic spec.

@@ -1,12 +1,14 @@
-import type { RelicBoard, Relic, RelicId, PlayerId, GamePhase, RoomCode, RoomStatus } from '@veins/shared';
-
-// Minimal Bleed Clock state. The full mechanic gets its own spec later;
-// this exists now only so floor transitions have something to update (T6).
-export type BleedClock = {
-  current: number; // remaining dungeon HP
-  max: number;
-  drainPerSecond: number;
-};
+import type {
+  RelicBoard,
+  Relic,
+  RelicId,
+  PlayerId,
+  GamePhase,
+  RoomCode,
+  RoomStatus,
+  BleedClockState,
+  RunOutcome,
+} from '@veins/shared';
 
 // In-memory game state for one room. Never persisted (netcode invariant I7).
 export type Room = {
@@ -20,7 +22,8 @@ export type Room = {
   registry: Map<RelicId, Relic>;
   phase: GamePhase;
   floor: number;
-  bleedClock: BleedClock;
+  bleedClock: BleedClockState;
+  outcome: RunOutcome | null;
 };
 
 // Placeholder tuning — moves to the Bleed Clock spec when that work begins.

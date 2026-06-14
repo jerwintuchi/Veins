@@ -148,9 +148,14 @@ All procedural logic (dungeon gen, synergy evaluation, loot rolls) runs server-s
 - [x] `RoomManager` (create/join/leave/start, ephemeral in-memory)
 - [x] Socket.io wiring (authoritative handlers, delta broadcasts)
 
+**Bleed Clock** *(complete — 24 tests passing)*
+- [x] Real-time drain math (pure, clamped, deterministic)
+- [x] Depth scaling (deeper floors drain faster, tension carries over)
+- [x] Run-end on depletion (wipe) + voluntary extraction
+- [x] Delta broadcast (`BLEED_CLOCK_TICK`) + server game loop
+
 **Up next**
 - [ ] Enemy system + combat
-- [ ] Bleed Clock
 - [ ] Mobile controls (virtual joystick + auto-aim)
 - [ ] PWA manifest (fullscreen on iOS)
 - [ ] Meta-progression (Supabase)

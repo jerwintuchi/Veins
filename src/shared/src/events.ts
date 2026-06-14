@@ -1,4 +1,5 @@
 import type { HexCoord, RelicId, PlayerId, SynergyMap, RelicBoard, Relic } from './board.js';
+import type { BleedClockState, RunOutcome } from './bleedClock.js';
 
 export type GamePhase = 'loot' | 'combat' | 'transition';
 
@@ -49,3 +50,9 @@ export type LinkedFatesErrorEvent = {
   code: 'INVALID_COORD' | 'NOT_OWNER' | 'NO_RELIC' | 'SLOT_OCCUPIED';
   message: string;
 };
+
+// Server -> Room (delta, every Bleed Clock tick)
+export type BleedClockTickEvent = { clock: BleedClockState };
+
+// Server -> Room (broadcast when a run ends)
+export type RunEndedEvent = { outcome: RunOutcome; finalFloor: number };
