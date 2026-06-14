@@ -35,6 +35,7 @@ export type LobbyErrorEvent = {
     | 'ALREADY_STARTED'
     | 'ALREADY_IN_ROOM'
     | 'NOT_ENOUGH_PLAYERS'
-    | 'NOT_IN_ROOM';
+    | 'NOT_IN_ROOM'
+    | 'INVALID_REQUEST';
   message: string;
 };

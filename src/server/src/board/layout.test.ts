@@ -45,21 +45,27 @@ describe('assignHomeQuadrants', () => {
     }
   });
 
-  it('guarantees at least one cross-player adjacency (synergy is possible)', () => {
-    const players: PlayerId[] = ['p1', 'p2'];
-    const owners = assignHomeQuadrants(coords, players);
+  it('guarantees cross-player adjacency for every supported player count (synergy is possible)', () => {
     const present = new Set(coords.map(hexCoordKey));
+    const configs: PlayerId[][] = [
+      ['p1', 'p2'],
+      ['p1', 'p2', 'p3'],
+      ['p1', 'p2', 'p3', 'p4'],
+    ];
 
-    let crossPairs = 0;
-    for (const coord of coords) {
-      const owner = owners.get(hexCoordKey(coord));
-      for (const nb of hexNeighbors(coord)) {
-        const nbKey = hexCoordKey(nb);
-        if (!present.has(nbKey)) continue;
-        if (owners.get(nbKey) !== owner) crossPairs++;
+    for (const players of configs) {
+      const owners = assignHomeQuadrants(coords, players);
+      let crossPairs = 0;
+      for (const coord of coords) {
+        const owner = owners.get(hexCoordKey(coord));
+        for (const nb of hexNeighbors(coord)) {
+          const nbKey = hexCoordKey(nb);
+          if (!present.has(nbKey)) continue;
+          if (owners.get(nbKey) !== owner) crossPairs++;
+        }
       }
+      expect(crossPairs).toBeGreaterThan(0);
     }
-    expect(crossPairs).toBeGreaterThan(0);
   });
 
   it('is deterministic for the same players list', () => {

@@ -141,6 +141,19 @@ describe('registerHandlers wiring (smoke)', () => {
     expect((err!.payload as { code: string }).code).toBe('INVALID_COORD');
   });
 
+  it('rejects a malformed join-room payload with INVALID_REQUEST (not ROOM_NOT_FOUND)', () => {
+    const { io, connect } = makeFakeIo();
+    registerHandlers(io, new RoomManager());
+
+    const sock = makeFakeSocket('s1');
+    connect()!(sock);
+    expect(() => sock.handlers.get('join-room')!({})).not.toThrow();
+
+    const err = sock.emits.find(e => e.event === 'LOBBY_ERROR');
+    expect(err).toBeDefined();
+    expect((err!.payload as { code: string }).code).toBe('INVALID_REQUEST');
+  });
+
   it('rejects a malformed revive payload with a targeted error, never throwing', () => {
     const { io, connect } = makeFakeIo();
     const manager = new RoomManager({ generateCode: () => 'ROOMW', generateRunId: () => 'run-w' });

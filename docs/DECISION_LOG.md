@@ -151,3 +151,11 @@
 **Decision**: Second code review audited both Dungeon Generation and Multiplayer Rooms. Both PASS, no blockers. Confirmed R6 server-authoritative ownership is genuinely enforced and the deferred Circulatory Board ownership note is fully resolved.
 **Acted on review WARNING**: The `place-relic` and `revive` socket handlers cast untrusted payloads and relied on the pure handler to fault — a malformed `coord` would throw inside the listener (uncaught) instead of returning a targeted error. Added an `isCoord` shape guard at the socket boundary for both handlers; malformed payloads now emit `INVALID_COORD` to the requesting socket and never throw. Two regression tests added (102 server tests total).
 **Left as-is (documented)**: `join-room` emits `ROOM_NOT_FOUND` for a malformed code shape (slightly misleading vs a distinct bad-request code), and cross-player-adjacency is asserted only for the 2-player case (structurally guaranteed for 3-4 by the center cell bordering all arcs). Minor; revisit if it ever matters.
+
+---
+
+## 2026-06-14 — Addressed both remaining review #2 WARNINGs
+**Decision**: Resolved the two minor items left documented above.
+1. Added `INVALID_REQUEST` to `LobbyErrorEvent`; `join-room` now emits `INVALID_REQUEST` (not `ROOM_NOT_FOUND`) for a malformed payload, so a bad-shape request is no longer conflated with a genuinely missing room. Regression test added.
+2. Extended the cross-player adjacency test to assert the property for 2-, 3-, and 4-player boards (previously only 2). Confirms synergy is structurally possible at every supported player count.
+**Result**: 113 tests total (103 server + 10 shared), clean typecheck. No outstanding review findings.

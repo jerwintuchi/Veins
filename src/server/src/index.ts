@@ -69,7 +69,7 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
     socket.on('join-room', (payload) => {
       const req = payload as JoinRoomRequest;
       if (!req || typeof req.code !== 'string') {
-        socket.emit('LOBBY_ERROR', { code: 'ROOM_NOT_FOUND', message: 'Invalid join request.' });
+        socket.emit('LOBBY_ERROR', { code: 'INVALID_REQUEST', message: 'Malformed join-room request.' });
         return;
       }
       const res = manager.joinRoom(req.code, playerId);
