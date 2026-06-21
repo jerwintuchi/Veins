@@ -154,6 +154,12 @@ All procedural logic (dungeon gen, synergy evaluation, loot rolls) runs server-s
 - [x] Run-end on depletion (wipe) + voluntary extraction
 - [x] Delta broadcast (`BLEED_CLOCK_TICK`) + server game loop
 
+**Floor Progression** *(complete — 14 tests passing)*
+- [x] Live `descend` path (wires `advanceFloor` to a socket handler)
+- [x] Per-floor dungeons (deterministic from runId + floor)
+- [x] Board + clock carry-over, drain rises, combat phase on arrival
+- [x] `FLOOR_ADVANCED` delta broadcast
+
 **Up next**
 - [ ] Enemy system + combat
 - [ ] Mobile controls (virtual joystick + auto-aim)

@@ -244,4 +244,36 @@ describe('Bleed Clock loop + extract wiring (T5)', () => {
     expect(err).toBeDefined();
     expect((err!.payload as { code: string }).code).toBe('NOT_IN_ROOM');
   });
+
+  it('descend handler broadcasts FLOOR_ADVANCED with the new floor + dungeon', () => {
+    const { io, roomEmits, connect } = makeFakeIo();
+    const manager = new RoomManager({ generateCode: () => 'DESC1', generateRunId: () => 'run-desc1' });
+    registerHandlers(io, manager);
+
+    const host = makeFakeSocket('h1');
+    connect()!(host);
+    host.handlers.get('create-room')!(undefined);
+    const p2 = makeFakeSocket('p2');
+    connect()!(p2);
+    p2.handlers.get('join-room')!({ code: 'DESC1' });
+    host.handlers.get('start-run')!(undefined);
+
+    host.handlers.get('descend')!(undefined);
+    const advanced = roomEmits.find(e => e.event === 'FLOOR_ADVANCED');
+    expect(advanced).toBeDefined();
+    expect((advanced!.payload as { floor: number }).floor).toBe(2);
+    expect((advanced!.payload as { dungeon: { runId: string } }).dungeon.runId).toBe('run-desc1');
+    expect(manager.getRoom('DESC1')?.floor).toBe(2);
+  });
+
+  it('descend handler rejects when the socket is not in a room', () => {
+    const { io, connect } = makeFakeIo();
+    registerHandlers(io, new RoomManager());
+    const sock = makeFakeSocket('lonely');
+    connect()!(sock);
+    sock.handlers.get('descend')!(undefined);
+    const err = sock.emits.find(e => e.event === 'LOBBY_ERROR');
+    expect(err).toBeDefined();
+    expect((err!.payload as { code: string }).code).toBe('NOT_IN_ROOM');
+  });
 });

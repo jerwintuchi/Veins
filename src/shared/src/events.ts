@@ -1,5 +1,6 @@
 import type { HexCoord, RelicId, PlayerId, SynergyMap, RelicBoard, Relic } from './board.js';
 import type { BleedClockState, RunOutcome } from './bleedClock.js';
+import type { DungeonLayout } from './dungeon.js';
 
 export type GamePhase = 'loot' | 'combat' | 'transition';
 
@@ -56,3 +57,6 @@ export type BleedClockTickEvent = { clock: BleedClockState };
 
 // Server -> Room (broadcast when a run ends)
 export type RunEndedEvent = { outcome: RunOutcome; finalFloor: number };
+
+// Server -> Room (broadcast when the party descends to a new floor)
+export type FloorAdvancedEvent = { floor: number; dungeon: DungeonLayout };

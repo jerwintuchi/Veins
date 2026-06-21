@@ -219,4 +219,19 @@ describe('RoomManager — Bleed Clock integration', () => {
     const { room } = mgr.createRoom('h1');
     expect(mgr.extractRoom(room.code).ok).toBe(false);
   });
+
+  it('descendRoom advances an in-progress run to the next floor', () => {
+    const mgr = new RoomManager({ generateCode: seqCodes() });
+    const code = startedRoom(mgr);
+    const res = mgr.descendRoom(code);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.event.floor).toBe(2);
+    expect(mgr.getRoom(code)?.floor).toBe(2);
+  });
+
+  it('descendRoom rejects an unknown code', () => {
+    const mgr = new RoomManager({ generateCode: seqCodes() });
+    expect(mgr.descendRoom('NOPE').ok).toBe(false);
+  });
 });

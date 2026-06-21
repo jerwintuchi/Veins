@@ -107,8 +107,14 @@ function buildNode(rect: Rect, depth: number, config: DungeonConfig, rng: Rng, i
   };
 }
 
-export function generateDungeon(runId: string, config: DungeonConfig = STANDARD_DUNGEON_CONFIG): DungeonLayout {
-  const rng = createRng(hashSeed(runId));
+// `floor` folds into the seed so each floor of a run is a distinct but fully
+// deterministic dungeon. The layout's `runId` field stays the bare run id.
+export function generateDungeon(
+  runId: string,
+  config: DungeonConfig = STANDARD_DUNGEON_CONFIG,
+  floor = 1
+): DungeonLayout {
+  const rng = createRng(hashSeed(`${runId}#${floor}`));
   const root: Rect = { x: 0, y: 0, width: config.width, height: config.height };
   const ids: IdCounter = { next: 0 };
 

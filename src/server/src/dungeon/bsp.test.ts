@@ -143,6 +143,21 @@ describe('generateDungeon — assembly (T5)', () => {
     expect(layout.height).toBe(STANDARD_DUNGEON_CONFIG.height);
   });
 
+  it('is deterministic per (runId, floor) and varies by floor', () => {
+    const f2a = generateDungeon('run-floors', STANDARD_DUNGEON_CONFIG, 2);
+    const f2b = generateDungeon('run-floors', STANDARD_DUNGEON_CONFIG, 2);
+    const f3 = generateDungeon('run-floors', STANDARD_DUNGEON_CONFIG, 3);
+    expect(f2a).toEqual(f2b); // same (runId, floor) -> identical
+    expect(f2a.rooms).not.toEqual(f3.rooms); // different floor -> different layout
+  });
+
+  it('treats an omitted floor as floor 1 and keeps the bare runId in the layout', () => {
+    const implicit = generateDungeon('run-implicit', STANDARD_DUNGEON_CONFIG);
+    const explicit = generateDungeon('run-implicit', STANDARD_DUNGEON_CONFIG, 1);
+    expect(implicit).toEqual(explicit);
+    expect(generateDungeon('run-implicit', STANDARD_DUNGEON_CONFIG, 5).runId).toBe('run-implicit');
+  });
+
   it('generates well under the time budget (R6)', () => {
     // Target is < 5ms; assert a generous ceiling to stay non-flaky on slow CI.
     const start = performance.now();

@@ -13,9 +13,9 @@
 
 ## Active Spec
 <!-- SWAP THESE THREE LINES when switching features — one of the few times you edit this file -->
-@specs/bleed-clock/requirements.md
-@specs/bleed-clock/design.md
-@specs/bleed-clock/tasks.md
+@specs/floor-progression/requirements.md
+@specs/floor-progression/design.md
+@specs/floor-progression/tasks.md
 
 ## Workflow Rules
 @.claude/rules/spec-workflow.md

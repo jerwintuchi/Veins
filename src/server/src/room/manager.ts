@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { DungeonLayout, LobbyErrorEvent, PlayerId, RoomCode } from '@veins/shared';
 import { MAX_PLAYERS, MIN_PLAYERS_TO_START, HEX_BOARD_RADIUS } from '@veins/shared';
-import type { BleedClockTickEvent, RunEndedEvent } from '@veins/shared';
+import type { BleedClockTickEvent, RunEndedEvent, FloorAdvancedEvent } from '@veins/shared';
 import { generateDungeon } from '../dungeon/bsp.js';
 import { buildInitialBoard } from '../board/layout.js';
 import { advanceBleedForRoom, extractRun } from '../bleed/clock.js';
+import { descendFloor } from '../floor/progression.js';
 import { drainRateForFloor, type Room } from './state.js';
 import { generateRoomCode } from './roomCode.js';
 
@@ -153,5 +154,12 @@ export class RoomManager {
     const room = this.rooms.get(code);
     if (!room) return { ok: false };
     return extractRun(room);
+  }
+
+  // Descends a room to the next floor (new dungeon, raised drain, board carried).
+  descendRoom(code: RoomCode): { ok: true; event: FloorAdvancedEvent } | { ok: false } {
+    const room = this.rooms.get(code);
+    if (!room) return { ok: false };
+    return descendFloor(room);
   }
 }

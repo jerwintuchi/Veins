@@ -170,6 +170,20 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
       io.to(code).emit('RUN_ENDED', res.ended);
     });
 
+    socket.on('descend', () => {
+      const code = socket.data.roomCode;
+      if (!code) {
+        socket.emit('LOBBY_ERROR', { code: 'NOT_IN_ROOM', message: 'You are not in a room.' });
+        return;
+      }
+      const res = manager.descendRoom(code);
+      if (!res.ok) {
+        socket.emit('LOBBY_ERROR', { code: 'INVALID_REQUEST', message: 'No active run to descend.' });
+        return;
+      }
+      io.to(code).emit('FLOOR_ADVANCED', res.event);
+    });
+
     socket.on('disconnect', () => {
       const code = socket.data.roomCode;
       if (!code) return;

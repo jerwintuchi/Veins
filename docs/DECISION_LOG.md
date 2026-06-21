@@ -192,3 +192,25 @@
 2. (NOTE) Fixed stale comment on `advanceFloor` in `state.ts`: it tagged "R5" referencing the Circulatory Board spec's numbering (ambiguous against Bleed Clock R5 = the clamp). Reworded to cite both Circulatory Board R5 (board untouched) and Bleed Clock R6 (current preserved) by description.
 **Documented follow-up (not in this spec's scope)**: `advanceFloor` is pure and unit-tested but has no live `descend`/`advance-floor` socket handler — R2/R6 floor-transition behavior is verified at the unit level only, not end-to-end. A future floor-progression spec should add the inbound handler that calls `advanceFloor` and broadcasts the new floor + dungeon. Tracked here.
 **Result**: 136 tests total (124 server + 12 shared), clean typecheck. Bleed Clock spec verified complete.
+
+---
+
+## 2026-06-14 — Active Spec switched: Bleed Clock -> Floor Progression
+**Decision**: Bleed Clock complete; active spec swapped to Floor Progression.
+**Reason**: Directly closes the documented follow-up from code review #3 — `advanceFloor` was pure/tested but had no live socket handler. Floor Progression ties together per-floor dungeon gen, drain scaling, and board/clock persistence into a real `descend` flow.
+
+---
+
+## 2026-06-14 — Per-floor dungeon seeding: runId#floor
+**Decision**: `generateDungeon` gained an optional `floor` param (default 1) folded into the RNG seed as `hashSeed(\`${runId}#${floor}\`)`. The layout's `runId` field stays the bare run id.
+**Reason**: Each floor of a run needs a distinct dungeon that is still fully deterministic and reproducible (I3). Folding floor into the seed (not the id) keeps daily-challenge/bug-repro guarantees per floor while preserving the run identity in the payload. Floor 1 behaviour is unchanged for callers that omit the param (default 1).
+
+---
+
+## 2026-06-14 — Floor Progression spec complete
+**Decision**: Floor Progression spec fully implemented. T1-T4 done, 14 new tests (150 total: 137 server + 13 shared), clean typecheck.
+**Coverage**: R1 (floor++/drain up), R2 (per-floor deterministic dungeon), R3 (board + clock.current carry-over), R4 (server-authoritative, rejects non-in-progress, no mutation on failure), R5 (`FLOOR_ADVANCED` delta broadcast), R6 (combat phase on arrival).
+**Design notes**:
+- `descendFloor(room, config?)` reuses the pure `advanceFloor` for carry-over, then generates the new floor's dungeon and sets phase `combat`. It mutates the room in place (manager holds the reference), consistent with `advanceBleedForRoom`/`extractRun`.
+- Same thin-plumbing pattern: pure-ish core -> `RoomManager.descendRoom` -> `descend` socket handler broadcasting `FLOOR_ADVANCED`.
+- Note: combat->loot phase transition within a floor (which re-enables relic placement) is NOT part of this spec; it belongs to the future enemy/combat/encounter spec. Descending sets `combat`; nothing yet flips it back to `loot`.
