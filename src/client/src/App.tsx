@@ -113,6 +113,47 @@ export function App() {
     };
   }, [socketRef]);
 
+  // WASD / arrow-key movement for desktop. Sends a direction vector on every
+  // animation frame while keys are held. The server rate-limits to one move per
+  // combat tick, so flooding at 60fps is safe.
+  useEffect(() => {
+    const held = new Set<string>();
+
+    function onKeyDown(e: KeyboardEvent) {
+      held.add(e.key.toLowerCase());
+    }
+    function onKeyUp(e: KeyboardEvent) {
+      held.delete(e.key.toLowerCase());
+    }
+
+    let rafId: number;
+    function tick() {
+      const socket = socketRef.current;
+      if (socket && held.size > 0) {
+        let dx = 0, dy = 0;
+        if (held.has('w') || held.has('arrowup'))    dy -= 1;
+        if (held.has('s') || held.has('arrowdown'))  dy += 1;
+        if (held.has('a') || held.has('arrowleft'))  dx -= 1;
+        if (held.has('d') || held.has('arrowright')) dx += 1;
+        if (dx !== 0 || dy !== 0) {
+          const mag = Math.sqrt(dx * dx + dy * dy);
+          socket.emit('move-player', { dx: dx / mag, dy: dy / mag });
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      cancelAnimationFrame(rafId);
+    };
+  }, [socketRef]);
+
   // Mouse-aim: always registered (harmless before joining a room).
   useEffect(() => {
     let idleTimer: ReturnType<typeof setTimeout> | null = null;

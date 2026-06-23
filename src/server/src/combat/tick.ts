@@ -1,6 +1,8 @@
 import type { PlayerId, PlayerState, DungeonLayout } from '@veins/shared';
 import { ENEMY_TYPES } from '@veins/shared';
 import type { EnemyId, EnemyState, CombatEvent } from './types.js';
+import { clampToWalkable } from '../dungeon/collision.js';
+import { findNextWaypoint } from '../dungeon/pathfinding.js';
 
 // --- Pure helpers ---
 
@@ -43,7 +45,7 @@ function cloneMap<K, V extends object>(m: Map<K, V>): Map<K, V> {
 export function tickEnemies(
   enemies: Map<EnemyId, EnemyState>,
   players: Map<PlayerId, PlayerState>,
-  _dungeon: DungeonLayout, // reserved for future wall-collision work
+  dungeon: DungeonLayout,
   dt: number,
   aggressionCooldownMult = 1,
 ): { enemies: Map<EnemyId, EnemyState>; events: CombatEvent[] } {
@@ -76,14 +78,22 @@ export function tickEnemies(
         enemy.attackCooldownRemaining = def.attackCooldown * aggressionCooldownMult;
       }
     } else {
-      // In detection range but outside attack range: move toward nearest.
-      const dx = nearest.state.x - enemy.x;
-      const dy = nearest.state.y - enemy.y;
-      // dist already equals sqrt(dx²+dy²); reuse it to avoid a second sqrt.
+      // In detection range but outside attack range: A* toward player, wall-clamped.
       const step = Math.min(def.speed * dt, dist - def.attackRange);
-      enemy.x += (dx / dist) * step;
-      enemy.y += (dy / dist) * step;
-      // Note: wall/room collision deferred to the collision spec.
+      const waypoint = findNextWaypoint(enemy.x, enemy.y, nearest.state.x, nearest.state.y, dungeon);
+      // Fall back to direct chase if pathfinding returns null (unreachable, or same tile).
+      const tx = (waypoint ?? nearest.state).x;
+      const ty = (waypoint ?? nearest.state).y;
+      const wdx = tx - enemy.x;
+      const wdy = ty - enemy.y;
+      const wdist = Math.sqrt(wdx * wdx + wdy * wdy);
+      if (wdist > 0.001) {
+        const nx = enemy.x + (wdx / wdist) * step;
+        const ny = enemy.y + (wdy / wdist) * step;
+        const clamped = clampToWalkable(enemy.x, enemy.y, nx, ny, dungeon);
+        enemy.x = clamped.x;
+        enemy.y = clamped.y;
+      }
     }
   }
 

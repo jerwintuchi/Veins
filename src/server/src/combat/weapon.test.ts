@@ -4,17 +4,22 @@ import {
   WEAPON_COOLDOWN_MS, PROJECTILE_SPEED, PROJECTILE_DAMAGE,
   PROJECTILE_HIT_RADIUS, PROJECTILE_MAX_RANGE, PLAYER_MAX_HP,
 } from '@veins/shared';
-import type { PlayerState } from '@veins/shared';
+import type { PlayerState, DungeonLayout } from '@veins/shared';
 import type { EnemyState } from './types.js';
 import type { Room } from '../room/state.js';
 import { buildInitialBoard } from '../board/layout.js';
 import { drainRateForFloor } from '../room/state.js';
-import { generateDungeon, STANDARD_DUNGEON_CONFIG } from '../dungeon/bsp.js';
 import { createRng, hashSeed } from '../rng/seeded.js';
 import { STARTER_RELICS } from '@veins/shared';
 import { WOUND_BURST_BONUS, DOT_DURATION_S } from '../relic/effects.js';
 
-const DUNGEON = generateDungeon('r', STANDARD_DUNGEON_CONFIG, 1);
+// Large flat room — all positions within [0,1000]×[0,1000] are walkable so that
+// weapon/projectile tests work at synthetic coordinates without wall interference.
+const DUNGEON: DungeonLayout = {
+  runId: 'flat', width: 1000, height: 1000,
+  rooms: [{ id: 'room-0', rect: { x: 0, y: 0, width: 1000, height: 1000 } }],
+  corridors: [],
+};
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return { hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP, downed: false, x: 0, y: 0, ...overrides };

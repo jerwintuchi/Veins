@@ -23,7 +23,7 @@ import type {
   EnemyMovedEvent,
   RunStartedEvent,
 } from '@veins/shared';
-import { PROJECTILE_SPEED } from '@veins/shared';
+import { PROJECTILE_SPEED, CORRIDOR_HALF_WIDTH } from '@veins/shared';
 import { sceneStore } from './SceneStore.js';
 import { SoundManager } from './SoundManager.js';
 
@@ -85,6 +85,10 @@ export class GameScene extends Phaser.Scene {
     this.socket = socketRef?.current ?? null;
     this.localPlayerId = (this.game.registry.get('localPlayerId') as PlayerId | undefined) ?? null;
 
+    // 3× zoom: 1200-unit dungeon renders across ~400 screen pixels per axis,
+    // giving a comfortable "one floor visible" framing at 1080p.
+    this.cameras.main.setZoom(3);
+
     this.dungeonGraphics = this.add.graphics();
 
     // Aim ring drawn once at origin; repositioned dynamically.
@@ -101,16 +105,32 @@ export class GameScene extends Phaser.Scene {
 
   drawDungeon(dungeon: DungeonLayout): void {
     this.dungeonGraphics.clear();
+
+    // Draw corridor L-shapes first (behind rooms) so room fill covers the overlap.
+    const hw = CORRIDOR_HALF_WIDTH;
+    this.dungeonGraphics.fillStyle(COLOR_CORRIDOR);
+    for (const c of dungeon.corridors) {
+      const dw = Math.abs(c.to.x - c.from.x);
+      const dh = Math.abs(c.to.y - c.from.y);
+      if (dw > 0) {
+        this.dungeonGraphics.fillRect(
+          Math.min(c.from.x, c.to.x), c.from.y - hw,
+          dw, hw * 2,
+        );
+      }
+      if (dh > 0) {
+        this.dungeonGraphics.fillRect(
+          c.to.x - hw, Math.min(c.from.y, c.to.y),
+          hw * 2, dh,
+        );
+      }
+    }
+
     for (const room of dungeon.rooms) {
       this.dungeonGraphics.fillStyle(COLOR_ROOM);
       this.dungeonGraphics.fillRect(room.rect.x, room.rect.y, room.rect.width, room.rect.height);
     }
-    for (const corridor of dungeon.corridors) {
-      this.dungeonGraphics.lineStyle(8, COLOR_CORRIDOR, 1);
-      this.dungeonGraphics.strokeLineShape(
-        new Phaser.Geom.Line(corridor.from.x, corridor.from.y, corridor.to.x, corridor.to.y)
-      );
-    }
+
     // Update world/camera bounds to the dungeon size.
     this.cameras.main.setBounds(0, 0, dungeon.width, dungeon.height);
   }

@@ -61,8 +61,9 @@ function fireSocketEvent(event: string, payload?: unknown) {
 }
 
 beforeEach(() => {
-  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 0; });
-  vi.stubGlobal('cancelAnimationFrame', () => {});
+  // Do NOT call the callback synchronously — the WASD tick loop would recurse infinitely.
+  vi.stubGlobal('requestAnimationFrame', vi.fn().mockReturnValue(0));
+  vi.stubGlobal('cancelAnimationFrame', vi.fn());
   Object.defineProperty(window, 'innerWidth', { value: 800, configurable: true });
   Object.defineProperty(window, 'innerHeight', { value: 600, configurable: true });
   mockEmit.mockClear();

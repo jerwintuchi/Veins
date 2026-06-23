@@ -468,6 +468,10 @@ function setupWeaponRoom(code: string, runId = `run-${code}`) {
   manager.startRun(room.code);
   const r = manager.getRoom(code)!;
   r.phase = 'combat';
+  // Replace with a flat dungeon so test positions at (0,0), (5,0), (100,0) etc.
+  // are all walkable and projectile wall-termination doesn't interfere.
+  r.dungeon = { runId, width: 9999, height: 9999, corridors: [],
+    rooms: [{ id: 'room-0', rect: { x: 0, y: 0, width: 9999, height: 9999 } }] };
   // Place p2 far away to avoid interference from p2's auto-fire.
   const ps2 = r.playerStates.get('p2')!;
   r.playerStates.set('p2', { ...ps2, x: 99999, y: 99999 });

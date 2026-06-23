@@ -1,0 +1,6 @@
+{
+  "buildCommand": "pnpm --filter @veins/shared build && pnpm --filter @veins/client build",
+  "outputDirectory": "src/client/dist",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "framework": "vite"
+}

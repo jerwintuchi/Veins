@@ -8,14 +8,15 @@ import type {
 } from '@veins/shared';
 import { createRng, hashSeed, type Rng } from '../rng/seeded.js';
 
-// Standard dungeon tuning. Lives here next to the algorithm; adjust per-floor
-// later when the Bleed Clock / depth-scaling work begins.
+// Standard dungeon tuning. 1 world unit = 1 Phaser pixel at zoom=1.
+// PLAYER_SPEED=120 u/s → crossing a 150-unit room takes ~1.25s.
+// Rooms are 110–190 units wide (minLeafSize 150 − 2×roomPadding 20).
 export const STANDARD_DUNGEON_CONFIG: DungeonConfig = {
-  width: 80,
-  height: 80,
-  minLeafSize: 16,
+  width: 1200,
+  height: 1200,
+  minLeafSize: 150,
   maxDepth: 4,
-  roomPadding: 2,
+  roomPadding: 20,
 };
 
 type BspResult = {

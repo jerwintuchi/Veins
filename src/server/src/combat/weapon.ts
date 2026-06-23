@@ -10,6 +10,7 @@ import type { Room } from '../room/state.js';
 import type { PlayerId } from '@veins/shared';
 import { evaluateRelicHit, DOT_DURATION_S } from '../relic/effects.js';
 import { evaluateSynergies } from '../board/synergy.js';
+import { isWalkable } from '../dungeon/collision.js';
 
 export type HitResult =
   | { projectileId: string; hit: false }
@@ -84,6 +85,13 @@ export function stepProjectiles(room: Room, dt: number): HitResult[] {
     proj.distanceTravelled += step;
 
     if (proj.distanceTravelled > PROJECTILE_MAX_RANGE) {
+      room.projectiles.delete(id);
+      results.push({ projectileId: id, hit: false });
+      continue;
+    }
+
+    // Terminate on wall contact before checking enemy collision.
+    if (room.dungeon && !isWalkable(proj.x, proj.y, room.dungeon)) {
       room.projectiles.delete(id);
       results.push({ projectileId: id, hit: false });
       continue;

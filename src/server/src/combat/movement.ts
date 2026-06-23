@@ -1,9 +1,9 @@
 import type { PlayerState, DungeonLayout } from '@veins/shared';
 import { PLAYER_SPEED } from '@veins/shared';
+import { clampToWalkable } from '../dungeon/collision.js';
 
-// Pure player movement. Normalizes the direction vector so diagonal movement
-// is not faster than cardinal movement. Clamps result to dungeon bounds.
-// Per-room wall collision is deferred to the collision spec.
+// Pure player movement. Normalizes the direction vector, then clamps the
+// result to walkable area (rooms + corridors) with wall-slide support.
 export function movePlayer(
   playerState: PlayerState,
   dx: number,
@@ -13,14 +13,10 @@ export function movePlayer(
   speed: number = PLAYER_SPEED
 ): PlayerState {
   const mag = Math.sqrt(dx * dx + dy * dy);
-  if (mag === 0) return playerState; // zero vector: no-op, return original (no mutation)
+  if (mag === 0) return playerState;
 
   const nx = playerState.x + (dx / mag) * speed * dt;
   const ny = playerState.y + (dy / mag) * speed * dt;
-
-  return {
-    ...playerState,
-    x: Math.max(0, Math.min(dungeon.width, nx)),
-    y: Math.max(0, Math.min(dungeon.height, ny)),
-  };
+  const { x, y } = clampToWalkable(playerState.x, playerState.y, nx, ny, dungeon);
+  return { ...playerState, x, y };
 }

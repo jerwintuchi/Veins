@@ -2,10 +2,32 @@ import { describe, it, expect } from 'vitest';
 import { tickEnemies, applyEnemyAttacks, allEnemiesDead } from './tick.js';
 import { SHAMBLER_DEF, SPITTER_DEF, ENEMY_TYPES, PLAYER_MAX_HP } from '@veins/shared';
 import type { EnemyState } from './types.js';
-import type { PlayerState } from '@veins/shared';
-import { generateDungeon, STANDARD_DUNGEON_CONFIG } from '../dungeon/bsp.js';
+import type { PlayerState, DungeonLayout } from '@veins/shared';
 
-const DUNGEON = generateDungeon('r', STANDARD_DUNGEON_CONFIG, 1);
+// Large flat room — all positions within [0,512]×[0,512] are walkable so that
+// AI-behaviour tests (movement direction, attack timing) work at synthetic
+// coordinates without being blocked by wall collision.
+const DUNGEON: DungeonLayout = {
+  runId: 'flat', width: 512, height: 512,
+  rooms: [{ id: 'room-0', rect: { x: 0, y: 0, width: 512, height: 512 } }],
+  corridors: [],
+};
+
+// Room-0 (top-left) and room-1 (bottom-right) connected by an L-shaped corridor.
+// Rooms are 85+ units apart (> shambler attackRange=40) so the enemy must move.
+// The direct diagonal path passes through the wall, forcing A* to route through the L.
+const TWO_ROOM_DUNGEON: DungeonLayout = {
+  runId: 'two-room', width: 100, height: 100,
+  rooms: [
+    { id: 'room-0', rect: { x: 0, y: 0, width: 10, height: 10 } },
+    { id: 'room-1', rect: { x: 80, y: 80, width: 10, height: 10 } },
+  ],
+  corridors: [{
+    fromRoomId: 'room-0', toRoomId: 'room-1',
+    from: { x: 5, y: 5 }, to: { x: 85, y: 85 },
+    // L-shape: horizontal at y=4..6 x=5..85, vertical at x=84..86 y=5..85.
+  }],
+};
 
 function makeEnemy(overrides: Partial<EnemyState> = {}): EnemyState {
   const typeId = overrides.typeId ?? 'shambler';
@@ -271,5 +293,23 @@ describe('Spitter vs Shambler range distinction', () => {
     const { events } = tickEnemies(new Map([['e1', spitter]]), players, DUNGEON, 0.1);
     expect(events).toHaveLength(1);
     expect(events[0]!.damage).toBe(SPITTER_DEF.damage);
+  });
+});
+
+// --- T6: pathfinding integration (R3) ---
+
+describe('tickEnemies — A* pathfinding (T6, R3)', () => {
+  it('enemy in room-0 routes through L-shaped corridor rather than through wall to room-1', () => {
+    // TWO_ROOM_DUNGEON: room-0 [0,10]×[0,10], room-1 [80,90]×[80,90] (~113 units apart > attackRange=40).
+    // Direct diagonal path from (5,5) to (85,85) passes through wall at ≈(45,45).
+    // A* routes horizontally along y≈5 then vertically along x≈85.
+    const enemy = makeEnemy({ x: 5.5, y: 5.5 }); // room-0 centre
+    const players = new Map([['p1', makePlayer({ x: 85.5, y: 85.5 })]]);  // room-1 centre
+    const { enemies } = tickEnemies(new Map([['e1', enemy]]), players, TWO_ROOM_DUNGEON, 0.1);
+    const e = enemies.get('e1')!;
+    // Enemy should have moved right (toward horizontal corridor leg, y stays near 5).
+    expect(e.x).toBeGreaterThan(5.5);
+    // y should remain near corridor level (y=4..6), not drift diagonally toward 85.5.
+    expect(e.y).toBeLessThan(8);
   });
 });

@@ -1,0 +1,30 @@
+# Fly.io app config for the Veins game server.
+# Run `fly launch` once to create the app, then `fly deploy` to deploy.
+# Replace "veins-server" with your actual app name from `fly launch`.
+app = "veins-server"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3001"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  # WebSocket connections need longer timeouts than default HTTP.
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 200
+    soft_limit = 150
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256

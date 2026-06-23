@@ -453,6 +453,17 @@ placement was completely broken. Also added player HP display to the HUD.
 - Server+shared: `RunEndedEvent` extended with `enemiesKilled: number`; Room state tracks cumulative kills via `room.enemiesKilled`; incremented in stepCombat on each enemy death (projectile + fire DoT kills both counted)
 **Impact**: Game is now visually playable — players appear on screen, move, projectiles travel, camera follows. Post-run screen shows a meaningful stat.
 
+## 2026-06-22 — Collision + A* Pathfinding spec complete
+**Decision**: Collision + Pathfinding spec (T1-T6) fully implemented. 370 server + 51 shared + 161 client = 582 tests passing.
+**Coverage**: R1 (player wall-slide via `clampToWalkable`), R2 (projectile terminates on wall entry), R3 (enemy A* pathfinding via `findNextWaypoint`), R4 (`isWalkable` = rooms ∪ corridor L-shapes).
+**Architecture decisions**:
+- `isWalkable` and `clampToWalkable` live in `src/server/src/dungeon/collision.ts` (pure, server-only).
+- `findNextWaypoint` in `src/server/src/dungeon/pathfinding.ts`: A* on integer tile grid with Manhattan heuristic, MAX_ITERATIONS=2000 guard.
+- **LOS shortcut**: `findNextWaypoint` first checks `hasLineOfSight` (ray-sampling at 0.5-unit steps). If the straight line to the goal is fully walkable, returns null immediately — the caller's direct-chase fallback is then optimal, and tile-center snapping does not introduce y-drift.
+- **Source-in-wall escape**: `clampToWalkable` allows the move if the source itself is not walkable (prevents permanently trapping entities that start in invalid positions, e.g. test helpers).
+- All existing weapon/tick/movement tests updated to use flat dungeon constants so synthetic positions at (0,0), (100,0) etc. remain walkable. New collision/pathfinding tests use real multi-room layouts.
+- Active spec swapped to dungeon-ruleset.
+
 ## 2026-06-22 — Bleed Clock stage escalation (R8-stage, SYSTEM DESIGN DOC §2.2)
 **What shipped**:
 - `bleedStageOf(current, max)` pure function in `state.ts`: returns 0/1/2/3 based on % bled (0-30%/30-60%/60-80%/80-100%)
@@ -466,3 +477,30 @@ placement was completely broken. Also added player HP display to the HUD.
 - Aggression is a cooldown multiplier on reset (not on drain) so the enemy attacks `def.attackCooldown × 0.7` seconds after each hit — cleanly decoupled from the cooldown drain path
 - Drain bonus is separate from floor scaling — stages activate within-floor as the clock depletes; floor depth multiplies the base rate
 **Impact**: Bleed Clock now has meaningful escalation. At 30% remaining, combat pressure increases; at 40% and 20% remaining, the drain itself accelerates, ratcheting tension toward forced extraction.
+
+---
+
+## 2026-06-23 — Dungeon Ruleset spec complete (specs/dungeon-ruleset/, T1-T4)
+**Decision**: Dungeon ruleset implements R1 (floor-scaled enemy counts), R2 (floor-weighted type distribution), R3 (elite last room), R4 (entry room always clear). All changes confined to `src/server/src/combat/spawn.ts`. 593 total tests passing.
+**Key choices**:
+- `countRange(floor)`: `extra = min(floor(floor-1)/2, 2)` → floors 1-2 give [1,2], floors 3-4 give [2,3], floor 5+ give [3,4]
+- `pickEnemyType(floor, rng)`: `spitterProb = min(0.7, 0.15 + 0.1*(floor-1))` — floor 1 = 15% spitters, floor 7+ = 70% spitters (capped)
+- Elite room = last room in BSP traversal order (`dungeon.rooms[length-1]`); deterministic, no extra RNG. 2× HP, 1.5× damage, +1 count, stacked on top of floor multipliers.
+- Active spec cleared after T4; no new types or events required.
+
+---
+
+## 2026-06-23 — Deployment: Fly.io (server) + Vercel (client)
+**Decision**: Server deployed to Fly.io via Docker (Node 20 + tsx runtime for ESM TypeScript); client deployed to Vercel via Vite static build.
+**Reasoning**:
+- Fly.io: WebSocket-friendly, persistent Node process, free tier sufficient for launch.
+- tsx runtime in Docker: `@veins/shared` exports `.ts` source (pnpm workspace); a multi-stage tsc build would require updating shared exports for prod vs dev, adding complexity. tsx handles the workspace imports at a ~100ms startup cost — acceptable for a 20-40 min session game.
+- Vercel: zero-config Vite deployment, `VITE_SERVER_URL` env var points to Fly.io URL.
+- Port: server listens on `process.env.PORT || 3001`; client fallback updated to match.
+
+---
+
+## 2026-06-23 — Dungeon scale + playability pass
+**Decision**: Scale STANDARD_DUNGEON_CONFIG from 80×80 to 1200×1200 (minLeafSize=150, roomPadding=20). Export `CORRIDOR_HALF_WIDTH=20` from `@veins/shared` (was a local constant of 1). Switch GameScene corridor rendering from `strokeLineShape` to L-shaped `fillRect`. Add WASD keyboard input via `useEffect` + RAF loop. Add `cameras.main.setZoom(3)` on scene create.
+**Reason**: 80×80 dungeon produced rooms smaller than the player sprite. CORRIDOR_HALF_WIDTH=1 (2-unit corridors) was impassable for a 24-unit player diameter. Both values were buried as local constants; exporting from shared keeps client rendering and server collision in sync.
+**A* tile size**: Changed from 1-unit to 10-unit coarse grid. With CORRIDOR_HALF_WIDTH=20, a 1-unit A* grid put 40×80=3200 equal-f-score tiles into the open set per corridor, exceeding MAX_ITERATIONS=2000. A 10-unit tile gives 4-wide corridors, reducing expansions to ~50 for test dungeons and ~500 for real 1200×1200 dungeons. MAX_ITERATIONS raised to 5000 as belt-and-suspenders.

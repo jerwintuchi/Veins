@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { movePlayer } from './movement.js';
 import { PLAYER_SPEED } from '@veins/shared';
-import type { PlayerState } from '@veins/shared';
-import { generateDungeon, STANDARD_DUNGEON_CONFIG } from '../dungeon/bsp.js';
+import type { PlayerState, DungeonLayout } from '@veins/shared';
 
-const DUNGEON = generateDungeon('r', STANDARD_DUNGEON_CONFIG, 1);
+// Large flat room — all positions in [0,512]×[0,512] are walkable.
+const DUNGEON: DungeonLayout = {
+  runId: 'flat', width: 512, height: 512,
+  rooms: [{ id: 'room-0', rect: { x: 0, y: 0, width: 512, height: 512 } }],
+  corridors: [],
+};
 
 function makePlayer(x: number, y: number): PlayerState {
   return { hp: 100, maxHp: 100, downed: false, x, y };

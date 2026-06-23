@@ -12,8 +12,9 @@
 | Client | `src/client/`  | Render + UI only. Untrusted. Zero game logic.                 |
 
 ## Active Spec
-<!-- SWAP THESE THREE LINES when switching features — one of the few times you edit this file -->
-<!-- no active spec — all recent specs complete, awaiting new feature selection -->
+@specs/body-collision/requirements.md
+@specs/body-collision/design.md
+@specs/body-collision/tasks.md
 
 ## Workflow Rules
 @.claude/rules/spec-workflow.md

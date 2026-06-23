@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+**/dist
+**/*.test.ts
+src/client
+docs
+specs
+.claude
+.git
+*.md

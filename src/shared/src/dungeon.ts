@@ -1,5 +1,9 @@
-// Dungeon geometry types. Types only (invariant I4). Generation logic lives in
+// Dungeon geometry types and constants (invariant I4). Generation logic lives in
 // src/server/src/dungeon/.
+
+// Half-width of a dungeon corridor in world units. Full width = 2 × this value.
+// Must be ≥ PLAYER_RADIUS so players can navigate corridors without clipping walls.
+export const CORRIDOR_HALF_WIDTH = 20;
 
 export type Point = { x: number; y: number };
 

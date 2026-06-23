@@ -50,7 +50,8 @@ vi.mock('phaser', () => {
     protected game = { registry: { get: vi.fn(() => ({ current: null })) } };
     protected cameras = {
       main: {
-        setBounds: vi.fn(), startFollow: vi.fn(), getWorldPoint: vi.fn(() => ({ x: 0, y: 0 }))
+        setBounds: vi.fn(), startFollow: vi.fn(), getWorldPoint: vi.fn(() => ({ x: 0, y: 0 })),
+        setZoom: vi.fn(),
       },
     };
     protected events = { once: vi.fn(), emit: vi.fn() };
@@ -96,18 +97,19 @@ const DUNGEON_3R2C = {
 };
 
 describe('GameScene.drawDungeon (T3, R2)', () => {
-  it('calls fillRect once per room', () => {
+  it('calls fillRect for rooms + corridor segments', () => {
+    // 3 rooms + 2 horizontal corridors (each horizontal = 1 fillRect, dh=0 so no vert segment) = 5.
     const scene = makeScene();
     drawDungeon(scene, DUNGEON_3R2C);
     const gfx = (scene as unknown as { dungeonGraphics: ReturnType<typeof makeGraphics> }).dungeonGraphics;
-    expect(gfx.fillRect).toHaveBeenCalledTimes(3);
+    expect(gfx.fillRect).toHaveBeenCalledTimes(5);
   });
 
-  it('calls strokeLineShape once per corridor', () => {
+  it('uses fillRect for corridors — strokeLineShape is never called', () => {
     const scene = makeScene();
     drawDungeon(scene, DUNGEON_3R2C);
     const gfx = (scene as unknown as { dungeonGraphics: ReturnType<typeof makeGraphics> }).dungeonGraphics;
-    expect(gfx.strokeLineShape).toHaveBeenCalledTimes(2);
+    expect(gfx.strokeLineShape).not.toHaveBeenCalled();
   });
 
   it('clears before redrawing (idempotent)', () => {
@@ -117,8 +119,8 @@ describe('GameScene.drawDungeon (T3, R2)', () => {
     const gfx = (scene as unknown as { dungeonGraphics: ReturnType<typeof makeGraphics> }).dungeonGraphics;
     // clear() called once per drawDungeon call.
     expect(gfx.clear).toHaveBeenCalledTimes(2);
-    // fillRect called 3 each time → 6 total.
-    expect(gfx.fillRect).toHaveBeenCalledTimes(6);
+    // fillRect called 5 each time (2 corridors + 3 rooms) → 10 total.
+    expect(gfx.fillRect).toHaveBeenCalledTimes(10);
   });
 });
 
