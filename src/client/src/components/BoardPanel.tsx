@@ -74,6 +74,7 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
   const [selected, setSelected] = useState<string | null>(null);
   const [revive, setRevive] = useState<ReviveState>({ active: false });
   const [placementError, setPlacementError] = useState<string | null>(null);
+  const [minimized, setMinimized] = useState(false);
 
   useEffect(() => {
     const el = document.createElement('style');
@@ -190,6 +191,30 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
 
   if (phase !== 'loot' && !revive.active) return null;
 
+  if (minimized) {
+    return (
+      <button
+        onClick={() => setMinimized(false)}
+        style={{
+          position: 'absolute',
+          bottom: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          padding: '6px 16px',
+          background: 'rgba(0,0,0,0.8)',
+          color: '#ffff88',
+          border: '1px solid #555',
+          borderRadius: '8px',
+          fontSize: '12px',
+          cursor: 'pointer',
+          pointerEvents: 'auto',
+        }}
+      >
+        {revive.active ? '⚠ Revive' : '▲ Relic Board'}
+      </button>
+    );
+  }
+
   const { board, synergyMap, registry, lootPool } = state;
   const placedIds = new Set(
     Object.values(board.slots).map(s => s.relicId).filter((id): id is string => id !== null)
@@ -217,6 +242,24 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
         userSelect: 'none',
       }}
     >
+      <button
+        onClick={() => setMinimized(true)}
+        style={{
+          position: 'absolute',
+          top: '6px',
+          right: '8px',
+          background: 'transparent',
+          border: 'none',
+          color: '#888',
+          fontSize: '14px',
+          cursor: 'pointer',
+          lineHeight: 1,
+          padding: '2px 4px',
+        }}
+        title="Minimize board"
+      >
+        ▼
+      </button>
       {revive.active && (
         <div data-testid="revive-panel" style={{ textAlign: 'center', color: '#fff', fontSize: '13px' }}>
           {revive.step === 'select-source' && (

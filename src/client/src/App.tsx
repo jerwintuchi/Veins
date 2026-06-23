@@ -89,8 +89,9 @@ export function App() {
     }
 
     // P1: capture payload so BoardPanel has initial state on first render.
-    function onRunStarted(ev: RunData) {
+    function onRunStarted(ev: RunData & { phase?: GamePhase }) {
       setRunData(ev);
+      setPhase(ev.phase ?? 'combat');
       setScreen('game');
     }
 
@@ -131,18 +132,24 @@ export function App() {
     }
 
     let rafId: number;
+    let wasMoving = false;
     function tick() {
       const socket = socketRef.current;
-      if (socket && held.size > 0) {
+      if (socket) {
         let dx = 0, dy = 0;
         if (held.has('w') || held.has('arrowup'))    dy -= 1;
         if (held.has('s') || held.has('arrowdown'))  dy += 1;
         if (held.has('a') || held.has('arrowleft'))  dx -= 1;
         if (held.has('d') || held.has('arrowright')) dx += 1;
-        if (dx !== 0 || dy !== 0) {
+        const moving = dx !== 0 || dy !== 0;
+        if (moving) {
           const mag = Math.sqrt(dx * dx + dy * dy);
           socket.emit('move-player', { dx: dx / mag, dy: dy / mag });
+        } else if (wasMoving) {
+          // Key(s) just released — tell server to stop.
+          socket.emit('move-player', { dx: 0, dy: 0 });
         }
+        wasMoving = moving;
       }
       rafId = requestAnimationFrame(tick);
     }

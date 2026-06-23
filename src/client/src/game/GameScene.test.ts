@@ -16,7 +16,7 @@ function makeArc() {
 }
 function makeRect() {
   const self: Record<string, unknown> & { x: number; y: number } = { x: 0, y: 0 };
-  self.setPosition = vi.fn(() => self);
+  self.setPosition = vi.fn((_x: number, _y: number) => { self.x = _x; self.y = _y; return self; });
   self.setDepth    = vi.fn(() => self);
   self.setOrigin   = vi.fn(() => self);
   self.setX        = vi.fn((_x: number) => { self.x = _x; return self; });
@@ -47,7 +47,14 @@ vi.mock('phaser', () => {
   const Scale = { RESIZE: 'RESIZE', CENTER_BOTH: 'CENTER_BOTH' };
   const AUTO = 'AUTO';
   class FakeScene {
-    protected game = { registry: { get: vi.fn(() => ({ current: null })) } };
+    protected game = {
+      registry: {
+        get: vi.fn((key: string) => {
+          if (key === 'socketRef') return { current: null };
+          return null; // initialDungeon, initialPlayerPositions, localPlayerId all null
+        }),
+      },
+    };
     protected cameras = {
       main: {
         setBounds: vi.fn(), startFollow: vi.fn(), getWorldPoint: vi.fn(() => ({ x: 0, y: 0 })),
@@ -143,12 +150,15 @@ describe('GameScene dynamic zoom (T4, R1)', () => {
 });
 
 describe('GameScene player sprites (T4, R3, R4)', () => {
-  it('PLAYER_MOVED updates local player arc position', () => {
+  it('PLAYER_MOVED updates the interpolation target (arc lerps toward it on update)', () => {
     const scene = makeScene();
     scene.addOrUpdatePlayer('p1', 0, 0, true);
     scene.movePlayer('p1', 100, 200);
-    const { players } = scene as unknown as { players: Map<string, { arc: ReturnType<typeof makeArc> }> };
-    expect(players.get('p1')!.arc.setPosition).toHaveBeenCalledWith(100, 200);
+    // With a very large dt the lerp factor → 1, arc snaps to the target position.
+    (scene as unknown as { update: (t: number, d: number) => void }).update(0, 10_000);
+    const { players } = scene as unknown as { players: Map<string, { arc: { x: number; y: number } }> };
+    expect(players.get('p1')!.arc.x).toBeCloseTo(100, 0);
+    expect(players.get('p1')!.arc.y).toBeCloseTo(200, 0);
   });
 
   it('PLAYER_DOWNED sets arc color to 0x555555', () => {
@@ -336,14 +346,17 @@ describe('GameScene projectiles + enemy movement (T6-weapon, R9)', () => {
     expect(projectiles.size).toBe(1);
   });
 
-  it('moveEnemy repositions enemy rect and HP bar', () => {
+  it('moveEnemy sets interpolation target; update() drives rect + HP bar toward it', () => {
     const scene = makeScene();
     scene.spawnEnemy('e1', 0, 0, 60);
     scene.moveEnemy('e1', 200, 300);
-    const { enemies } = scene as unknown as { enemies: Map<string, { rect: ReturnType<typeof makeRect>; hpBg: ReturnType<typeof makeRect>; hpFill: ReturnType<typeof makeRect>; maxHp: number }> };
-    expect(enemies.get('e1')!.rect.setPosition).toHaveBeenCalledWith(200, 300);
+    // Large dt collapses lerp factor to 1 → immediate snap.
+    (scene as unknown as { update: (t: number, d: number) => void }).update(0, 10_000);
+    const { enemies } = scene as unknown as { enemies: Map<string, { rect: { x: number; y: number }; hpBg: ReturnType<typeof makeRect>; hpFill: ReturnType<typeof makeRect>; maxHp: number }> };
+    expect(enemies.get('e1')!.rect.x).toBeCloseTo(200, 0);
+    expect(enemies.get('e1')!.rect.y).toBeCloseTo(300, 0);
     expect(enemies.get('e1')!.hpBg.setPosition).toHaveBeenCalled();
-    expect(enemies.get('e1')!.hpFill.setX).toHaveBeenCalled();
+    expect(enemies.get('e1')!.hpFill.setPosition).toHaveBeenCalled();
   });
 
   it('moveEnemy for unknown id is a no-op (does not throw)', () => {

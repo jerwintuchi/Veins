@@ -70,6 +70,9 @@ type ProjectileEntry = { dot: Phaser.GameObjects.Arc; vx: number; vy: number };
 
 const COLOR_PROJECTILE = 0xffffff;
 const PROJECTILE_RADIUS = 4;
+// Exponential-decay lerp speed (units: 1/second). Higher = snappier catch-up.
+// At 60fps (dt≈0.0167): factor ≈ 1-e^(-25*0.0167) ≈ 0.34 → 95% in ~100ms (one server tick).
+const LERP_SPEED = 25;
 
 export class GameScene extends Phaser.Scene {
   private dungeonGraphics!: Phaser.GameObjects.Graphics;
@@ -79,6 +82,10 @@ export class GameScene extends Phaser.Scene {
   private enemies = new Map<string, EnemyContainer>();
   private projectiles = new Map<string, ProjectileEntry>();
   private localPlayerId: PlayerId | null = null;
+
+  // Authoritative server positions; sprites lerp toward these each frame.
+  private playerTargets = new Map<PlayerId, { x: number; y: number }>();
+  private enemyTargets  = new Map<string,   { x: number; y: number }>();
 
   // Reference to the socket wired in by App.tsx via game.registry.
   private socket: Socket | null = null;
@@ -170,17 +177,41 @@ export class GameScene extends Phaser.Scene {
       arc.setDepth(5);
       entry = { arc, isLocal };
       this.players.set(playerId, entry);
+      this.playerTargets.set(playerId, { x, y }); // snap target on first spawn
       if (isLocal) {
-        this.cameras.main.startFollow(arc as unknown as Phaser.GameObjects.GameObject, true, 0.08, 0.08);
+        // Snappy camera follow — sprite interpolation provides the smooth feel.
+        this.cameras.main.startFollow(arc as unknown as Phaser.GameObjects.GameObject, false, 0.5, 0.5);
       }
     } else {
-      entry.arc.setPosition(x, y);
+      this.playerTargets.set(playerId, { x, y });
     }
     return entry;
   }
 
   update(_time: number, delta: number): void {
     const dt = delta / 1000;
+    const f = 1 - Math.exp(-LERP_SPEED * dt);
+
+    // Lerp player sprites toward authoritative server positions.
+    for (const [id, entry] of this.players) {
+      const target = this.playerTargets.get(id);
+      if (!target) continue;
+      entry.arc.x += (target.x - entry.arc.x) * f;
+      entry.arc.y += (target.y - entry.arc.y) * f;
+    }
+
+    // Lerp enemy sprites (rect + HP bars) toward authoritative positions.
+    for (const [id, c] of this.enemies) {
+      const target = this.enemyTargets.get(id);
+      if (!target) continue;
+      const nx = c.rect.x + (target.x - c.rect.x) * f;
+      const ny = c.rect.y + (target.y - c.rect.y) * f;
+      c.rect.setPosition(nx, ny);
+      c.hpBg.setPosition(nx, ny - HP_BAR_OFFSET);
+      c.hpFill.setPosition(nx - HP_BAR_W / 2, ny - HP_BAR_OFFSET);
+    }
+
+    // Projectiles move purely client-side between ticks.
     for (const p of this.projectiles.values()) {
       p.dot.x += p.vx * dt;
       p.dot.y += p.vy * dt;
@@ -190,7 +221,7 @@ export class GameScene extends Phaser.Scene {
   movePlayer(playerId: PlayerId, x: number, y: number): void {
     const entry = this.players.get(playerId);
     if (!entry) return;
-    entry.arc.setPosition(x, y);
+    this.playerTargets.set(playerId, { x, y });
     if (entry.isLocal) {
       sceneStore.localPlayerPos = { x, y };
     }
@@ -232,6 +263,7 @@ export class GameScene extends Phaser.Scene {
     hpFill.setOrigin(0, 0.5);
     hpFill.setX(x - HP_BAR_W / 2);
 
+    this.enemyTargets.set(id, { x, y }); // snap target to spawn position
     this.enemies.set(id, { rect, hpBg, hpFill, maxHp: hp });
   }
 
@@ -242,7 +274,7 @@ export class GameScene extends Phaser.Scene {
     c.hpBg.destroy();
     c.hpFill.destroy();
     this.enemies.delete(id);
-    // Hide aim ring if it was targeting this enemy.
+    this.enemyTargets.delete(id);
     if (this.aimRing.visible) this.aimRing.setVisible(false);
   }
 
@@ -267,11 +299,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   moveEnemy(id: string, x: number, y: number): void {
-    const c = this.enemies.get(id);
-    if (!c) return;
-    c.rect.setPosition(x, y);
-    c.hpBg.setPosition(x, y - HP_BAR_OFFSET);
-    c.hpFill.setX(x - HP_BAR_W / 2);
+    if (!this.enemies.has(id)) return;
+    this.enemyTargets.set(id, { x, y });
   }
 
   // --- auto-aim ring ---

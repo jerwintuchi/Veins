@@ -128,10 +128,15 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
         synergyMap: evaluateSynergies(res.room.board, res.room.registry),
         relicRegistry: Object.fromEntries(res.room.registry),
         lootPool: res.room.lootPool,
+        phase: res.room.phase,
         playerPositions: Object.fromEntries(
           [...res.room.playerStates.entries()].map(([id, s]) => [id, { x: s.x, y: s.y }])
         ),
       });
+      // Broadcast floor-1 enemies spawned at run start.
+      for (const [id, e] of res.room.enemies) {
+        io.to(code).emit('ENEMY_SPAWNED', { enemyId: id, typeId: e.typeId, x: e.x, y: e.y, hp: e.hp });
+      }
     });
 
     socket.on('place-relic', (payload) => {
