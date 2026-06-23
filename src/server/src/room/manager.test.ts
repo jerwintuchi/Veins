@@ -374,19 +374,15 @@ describe('RoomManager — Bleed Clock integration', () => {
     expect(room.lootPool).toEqual([]);
   });
 
-  // T2 (loot spec) — R2: startRun populates lootPool with up to LOOT_POOL_SIZE entries
-  it('lootPool has at most LOOT_POOL_SIZE entries and only valid relic ids after startRun (T2-loot, R2)', async () => {
-    const { STARTER_RELIC_IDS } = await import('@veins/shared');
-    const { LOOT_POOL_SIZE } = await import('../loot/pool.js');
+  // T2 (loot spec) — R2: startRun begins in combat phase; lootPool is empty at start
+  // and gets populated by the server when all enemies die (phaseChanged → PHASE_CHANGED event).
+  it('lootPool is empty at startRun (combat-first flow) (T2-loot, R2)', async () => {
     const mgr = new RoomManager({ generateCode: seqCodes(), generateRunId: () => 'run-loot' });
     const { room } = mgr.createRoom('h1');
     mgr.joinRoom(room.code, 'p2');
     mgr.startRun(room.code);
     const r = mgr.getRoom(room.code)!;
-    expect(r.lootPool.length).toBeGreaterThan(0);
-    expect(r.lootPool.length).toBeLessThanOrEqual(LOOT_POOL_SIZE);
-    for (const id of r.lootPool) {
-      expect(STARTER_RELIC_IDS).toContain(id);
-    }
+    expect(r.phase).toBe('combat');
+    expect(r.lootPool).toEqual([]);
   });
 });

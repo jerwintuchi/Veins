@@ -11,7 +11,7 @@ import { DescendPanel } from './components/DescendPanel.js';
 import { PhaseToast } from './components/PhaseToast.js';
 import { GameScene } from './game/GameScene.js';
 import { sceneStore } from './game/SceneStore.js';
-import type { GamePhase, RoomSummary, RelicBoard, SynergyMap, Relic, RoomUpdateEvent } from '@veins/shared';
+import type { GamePhase, RoomSummary, RelicBoard, SynergyMap, Relic, RoomUpdateEvent, DungeonLayout } from '@veins/shared';
 
 // How long (ms) a player must keep the mouse still before auto-aim re-activates.
 const MOUSE_IDLE_MS = 500;
@@ -23,6 +23,8 @@ type RunData = {
   synergyMap: SynergyMap;
   relicRegistry: Record<string, Relic>;
   lootPool: string[];
+  dungeon: DungeonLayout;
+  playerPositions: Record<string, { x: number; y: number }>;
 };
 
 type RunEndData = { outcome: 'wiped' | 'extracted'; finalFloor: number; enemiesKilled: number };
@@ -61,6 +63,8 @@ export function App() {
     gameRef.current = game;
     game.registry.set('socketRef', socketRef);
     game.registry.set('localPlayerId', localPlayerId);
+    game.registry.set('initialDungeon', runData?.dungeon ?? null);
+    game.registry.set('initialPlayerPositions', runData?.playerPositions ?? null);
 
     return () => {
       game.destroy(true);

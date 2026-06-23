@@ -248,6 +248,8 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
             && slot.ownerId === localPlayerId && slot.relicId !== null;
           const isReviveTarget = revive.active && revive.step === 'select-target'
             && slot.ownerId === revive.downedId && slot.relicId === null;
+          // Highlight empty owned slots when the player has a relic selected.
+          const isPlacementTarget = !!selected && slot.ownerId === localPlayerId && slot.relicId === null;
           return (
             <g
               key={key}
@@ -261,9 +263,9 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
               <polygon
                 points={hexPoints(px, py)}
                 fill={fill}
-                stroke={isReviveSource ? '#00ffaa' : isReviveTarget ? '#ffaa00' : synergized ? '#ffff00' : '#555555'}
-                strokeWidth={isReviveSource || isReviveTarget ? 3 : synergized ? 3 : 1}
-                opacity={slot.relicId ? 0.9 : 0.5}
+                stroke={isReviveSource ? '#00ffaa' : isReviveTarget ? '#ffaa00' : isPlacementTarget ? '#ffffff' : synergized ? '#ffff00' : '#555555'}
+                strokeWidth={isReviveSource || isReviveTarget ? 3 : isPlacementTarget ? 2 : synergized ? 3 : 1}
+                opacity={slot.relicId ? 0.9 : isPlacementTarget ? 0.8 : 0.5}
               />
               {slot.relicId && registry[slot.relicId] && (
                 <text
@@ -286,7 +288,7 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
       {phase === 'loot' && (
         <div
           data-testid="relic-tray"
-          style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '320px' }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', maxWidth: '320px' }}
         >
           {available.length === 0 ? (
             <div
@@ -296,25 +298,34 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
               All relics placed — ready to descend!
             </div>
           ) : (
-            available.map(relic => (
-              <button
-                key={relic.id}
-                data-testid={`relic-card-${relic.id}`}
-                data-selected={selected === relic.id ? 'true' : 'false'}
-                onClick={() => setSelected(s => s === relic.id ? null : relic.id)}
-                style={{
-                  padding: '4px 8px',
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                  background: selected === relic.id ? '#333' : '#1a1a1a',
-                  color: '#fff',
-                  border: selected === relic.id ? '2px solid #ffff00' : '2px solid #555',
-                  borderRadius: '4px',
-                }}
-              >
-                {relic.name}
-              </button>
-            ))
+            <>
+              <div style={{ color: '#aaa', fontSize: '11px', fontFamily: 'monospace' }}>
+                {selected
+                  ? '→ Now click one of your colored slots on the board above'
+                  : '↓ Click a relic to select it, then click your slot on the board'}
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                {available.map(relic => (
+                  <button
+                    key={relic.id}
+                    data-testid={`relic-card-${relic.id}`}
+                    data-selected={selected === relic.id ? 'true' : 'false'}
+                    onClick={() => setSelected(s => s === relic.id ? null : relic.id)}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      background: selected === relic.id ? '#333' : '#1a1a1a',
+                      color: '#fff',
+                      border: selected === relic.id ? '2px solid #ffff00' : '2px solid #555',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    {relic.name}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}

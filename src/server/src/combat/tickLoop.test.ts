@@ -48,7 +48,10 @@ function putInCombat(manager: RoomManager, code: string) {
 describe('runCombatTick — loot/ended rooms skipped (T14, P7)', () => {
   it('a room in loot phase receives no combat events', () => {
     const { manager, code } = startedRoom('LT1');
-    // Run starts in loot phase; do not descend.
+    // Manually set to loot phase (run now starts in combat; this tests the skip logic).
+    const room = manager.getRoom(code)!;
+    room.phase = 'loot';
+    room.enemies = new Map();
     const { io, roomEmits } = makeFakeIo();
     runCombatTick(io, manager, 0.1);
     expect(roomEmits).toHaveLength(0);
@@ -256,7 +259,10 @@ describe('revive phase guard (T12, R11, P6)', () => {
     connect()!(p2);
     p2.handlers.get('join-room')!({ code: 'RVP1' });
     host.handlers.get('start-run')!(undefined);
-    // Room is in loot phase after startRun — revive should be rejected.
+    // Force loot phase — run now starts in combat, but revive guard applies to loot phase.
+    const room = manager.getRoom('RVP1')!;
+    room.phase = 'loot';
+    room.enemies = new Map();
 
     host.handlers.get('revive')!({ sourceCoord: { q: 0, r: 0 }, targetCoord: { q: 1, r: 0 } });
     const err = host.emits.find(e => e.event === 'LOBBY_ERROR');
@@ -278,8 +284,7 @@ describe('descend phase guard (review #5)', () => {
     connect()!(p2);
     p2.handlers.get('join-room')!({ code: 'DPG1' });
     host.handlers.get('start-run')!(undefined);
-    // Force combat phase.
-    host.handlers.get('descend')!(undefined); // loot → combat, floor 2
+    // Run already starts in combat phase — no need to descend first.
     expect(manager.getRoom('DPG1')?.phase).toBe('combat');
 
     // Attempting another descend from combat phase must be rejected.
@@ -290,7 +295,7 @@ describe('descend phase guard (review #5)', () => {
     expect(err).toBeDefined();
     expect((err!.payload as { code: string }).code).toBe('WRONG_PHASE');
     expect(roomEmits.some(e => e.event === 'FLOOR_ADVANCED')).toBe(false);
-    expect(manager.getRoom('DPG1')?.floor).toBe(2); // floor not advanced
+    expect(manager.getRoom('DPG1')?.floor).toBe(1); // floor not advanced
   });
 
   it('emits ENEMY_SPAWNED for each enemy after a valid descend (R10)', () => {
@@ -305,6 +310,10 @@ describe('descend phase guard (review #5)', () => {
     connect()!(p2);
     p2.handlers.get('join-room')!({ code: 'ESP1' });
     host.handlers.get('start-run')!(undefined);
+    // Force loot phase so descend is accepted (run now starts in combat).
+    const espRoom = manager.getRoom('ESP1')!;
+    espRoom.phase = 'loot';
+    espRoom.enemies = new Map();
 
     roomEmits.length = 0;
     host.handlers.get('descend')!(undefined);

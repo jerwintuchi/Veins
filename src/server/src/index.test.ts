@@ -8,6 +8,14 @@ import { generateDungeon, STANDARD_DUNGEON_CONFIG } from './dungeon/bsp.js';
 import { createRng, hashSeed } from './rng/seeded.js';
 import { STARTER_RELICS } from '@veins/shared';
 import { FIRE_DURATION_S } from './relic/effects.js';
+import { generateLootPool } from './loot/pool.js';
+
+// Helper: put a room that started in combat directly into loot phase with a non-empty pool.
+function forceLootPhase(room: Room): void {
+  room.phase = 'loot';
+  room.enemies = new Map();
+  room.lootPool = generateLootPool([...room.registry.keys()], room.board, room.runId, room.floor);
+}
 
 // A fake Socket.io server that captures the connection handler and records
 // room-broadcast emits, so we can drive the wiring without a real network.
@@ -91,8 +99,11 @@ describe('registerHandlers wiring (smoke)', () => {
     host.handlers.get('start-run')!(undefined);
     expect(roomEmits.some(e => e.event === 'RUN_STARTED')).toBe(true);
 
-    // Host places a relic from the loot pool into one of their own slots.
+    // Run starts in combat phase; force loot phase so relic placement is valid.
     const room = manager.getRoom('ROOMX')!;
+    forceLootPhase(room);
+
+    // Host places a relic from the loot pool into one of their own slots.
     const ownSlot = Object.values(room.board.slots).find(s => s.ownerId === 'host')!;
     const relicId = room.lootPool[0]!;
     host.handlers.get('place-relic')!({ coord: ownSlot.coord, relicId });
@@ -141,8 +152,11 @@ describe('registerHandlers wiring (smoke)', () => {
     p2.handlers.get('join-room')!({ code: 'ROOMY' });
     host.handlers.get('start-run')!(undefined);
 
-    // Host tries to place a pool relic into a slot owned by p2.
+    // Run starts in combat phase; force loot phase so relic placement is valid.
     const room = manager.getRoom('ROOMY')!;
+    forceLootPhase(room);
+
+    // Host tries to place a pool relic into a slot owned by p2.
     const otherSlot = Object.values(room.board.slots).find(s => s.ownerId === 'p2')!;
     const relicId = room.lootPool[0]!;
     host.handlers.get('place-relic')!({ coord: otherSlot.coord, relicId });
@@ -206,7 +220,7 @@ describe('registerHandlers wiring (smoke)', () => {
     expect((err!.payload as { code: string }).code).toBe('INVALID_COORD');
   });
 
-  it('RUN_STARTED carries lootPool with valid relic ids (T2-loot, R3)', () => {
+  it('RUN_STARTED carries lootPool field (empty at start — combat phase first) (T2-loot, R3)', () => {
     const { io, roomEmits, connect } = makeFakeIo();
     const manager = new RoomManager({ generateCode: () => 'LPOOL1', generateRunId: () => 'run-lp1' });
     registerHandlers(io, manager);
@@ -222,12 +236,8 @@ describe('registerHandlers wiring (smoke)', () => {
     const ev = roomEmits.find(e => e.event === 'RUN_STARTED');
     expect(ev).toBeDefined();
     const payload = ev!.payload as { lootPool: string[] };
+    // Run starts in combat phase; loot pool is populated after the first floor is cleared.
     expect(Array.isArray(payload.lootPool)).toBe(true);
-    expect(payload.lootPool.length).toBeGreaterThan(0);
-    const room = manager.getRoom('LPOOL1')!;
-    for (const id of payload.lootPool) {
-      expect(room.registry.has(id)).toBe(true);
-    }
   });
 
   it('place-relic rejects a relic not in lootPool with RELIC_NOT_IN_POOL (T2-loot, R4)', () => {
@@ -244,6 +254,7 @@ describe('registerHandlers wiring (smoke)', () => {
     host.handlers.get('start-run')!(undefined);
 
     const room = manager.getRoom('LPOOL2')!;
+    forceLootPhase(room);
     const ownSlot = Object.values(room.board.slots).find(s => s.ownerId === 'host')!;
     // Use a relic that exists in the registry but is NOT in the loot pool.
     const notInPool = [...room.registry.keys()].find(id => !room.lootPool.includes(id))!;
@@ -268,6 +279,7 @@ describe('registerHandlers wiring (smoke)', () => {
     host.handlers.get('start-run')!(undefined);
 
     const room = manager.getRoom('LPOOL3')!;
+    forceLootPhase(room);
     const ownSlot = Object.values(room.board.slots).find(s => s.ownerId === 'host')!;
     const relicId = room.lootPool[0]!;
     const poolSizeBefore = room.lootPool.length;
@@ -362,6 +374,10 @@ describe('Bleed Clock loop + extract wiring (T5)', () => {
     connect()!(p2);
     p2.handlers.get('join-room')!({ code: 'DESC1' });
     host.handlers.get('start-run')!(undefined);
+    // Force loot phase so descend is accepted (run now starts in combat).
+    const descRoom = manager.getRoom('DESC1')!;
+    descRoom.phase = 'loot';
+    descRoom.enemies = new Map();
 
     host.handlers.get('descend')!(undefined);
     const advanced = roomEmits.find(e => e.event === 'FLOOR_ADVANCED');

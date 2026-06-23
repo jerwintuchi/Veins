@@ -141,7 +141,7 @@ export class RoomManager {
     room.status = 'in-progress';
     room.board = buildInitialBoard(room.players, HEX_BOARD_RADIUS);
     room.floor = 1;
-    room.phase = 'loot';
+    room.phase = 'combat';
     room.bleedClock = {
       current: DUNGEON_START_HP,
       max: DUNGEON_START_HP,
@@ -166,10 +166,12 @@ export class RoomManager {
     room.weaponCooldowns  = new Map(room.players.map(id => [id, 0]));
     room.playerMoveInputs = new Map(room.players.map(id => [id, { dx: 0, dy: 0 }]));
     room.nextProjectileId = 0;
-    // Populate the relic registry with the starter set so placement is possible on floor 1.
+    // Populate the relic registry with the starter set.
     room.registry = new Map(STARTER_RELICS.map(r => [r.id, r]));
-    // Floor-1 loot pool: seeded random selection of up to 3 unplaced relics.
-    room.lootPool = generateLootPool([...room.registry.keys()], room.board, runId, 1);
+    // Spawn floor-1 enemies immediately — run starts in combat, not loot.
+    room.enemies = spawnEnemies(runId, 1, dungeon);
+    // Loot pool is empty until enemies are cleared; filled on phase transition to loot.
+    room.lootPool = [];
     // Combat RNG seeded from runId; advances across floors (not reset on descend).
     room.combatRng = createRng(hashSeed(`${runId}#combat`));
     room.enemiesKilled = 0;

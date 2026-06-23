@@ -112,6 +112,19 @@ export class GameScene extends Phaser.Scene {
     this.aimRing.setDepth(10);
 
     this.bindSocketEvents();
+
+    // RUN_STARTED fires before Phaser is ready, so the dungeon and player
+    // positions are passed via the game registry instead of socket events.
+    const initialDungeon = this.game.registry.get('initialDungeon') as DungeonLayout | null;
+    const initialPositions = this.game.registry.get('initialPlayerPositions') as Record<string, { x: number; y: number }> | null;
+    if (initialDungeon) {
+      this.drawDungeon(initialDungeon);
+      if (initialPositions) {
+        for (const [id, pos] of Object.entries(initialPositions)) {
+          this.addOrUpdatePlayer(id, pos.x, pos.y, id === this.localPlayerId);
+        }
+      }
+    }
   }
 
   // --- dungeon ---
