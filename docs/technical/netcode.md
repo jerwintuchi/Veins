@@ -33,7 +33,7 @@ Single authoritative server (Node + Socket.io). Clients receive **delta events**
 Identity is server-derived everywhere: `placeRelic`/`revive` use the authenticated socket's player id, not a client field. Handlers shape-guard untrusted payloads (`isCoord`) and emit targeted error codes (`INVALID_COORD`, `INVALID_REQUEST`, `WRONG_PHASE`, …) instead of throwing. Room codes use `node:crypto` (unpredictable), deliberately outside the seeded-RNG mandate.
 
 ### Event catalogue (representative)
-- **Lobby/room:** `ROOM_UPDATE`, `RUN_STARTED`, `RUN_ENDED`, `LOBBY_ERROR`, `FLOOR_ADVANCED`, `PHASE_CHANGED`.
+- **Lobby/room:** `ROOM_UPDATE`, `RUN_STARTED`, `RUN_ENDED`, `LOBBY_ERROR`, `FLOOR_ADVANCED`, `PHASE_CHANGED`, `STATE_RESYNC` (S→socket, reconnection), `PLAYER_CONNECTION_CHANGED`.
 - **Board:** `BOARD_STATE_SYNC`, `RELIC_PLACED`, `RELIC_REMOVED`, `RELIC_PLACE_ERROR`, `LINKED_FATES_ERROR`, `BOARD_DOCTRINE_SHIFT`.
 - **Bleed:** `BLEED_CLOCK_TICK`, `BLEED_STAGE_CHANGED`.
 - **Combat:** `ENEMY_SPAWNED/DAMAGED/DIED/MOVED`, `PLAYER_DAMAGED/DOWNED/REVIVED/MOVED`, `PLAYER_AIM_CHANGED`, `PROJECTILE_FIRED/REMOVED`.
@@ -54,7 +54,7 @@ The invariants are the spine's enforcement layer. I1/I2/I5 make *Theology = Beha
 
 ## Future Expansion
 
-- **Reconnection handling** (today a room is effectively lost to a disconnected player) — `STATE_RESYNC` on rejoin. **TODO(build):** reconnection/resync is designed but unbuilt. See [OPEN-QUESTIONS.md](../OPEN-QUESTIONS.md) §C.
+- **Reconnection / resync — implemented** (specs/reconnection): stable handshake identity, disconnect retention, and a single-socket `STATE_RESYNC` snapshot let a dropped player rejoin an in-progress run. Follow-up: enemy/projectile sprite rehydration (OPEN-QUESTIONS §C).
 - **Client-side prediction** for movement if latency complaints arise (authority boundary unchanged).
 - **Rate-limiting / abuse guards** at the socket layer as player counts grow.
 - **Generated event contracts** from shared types to keep this catalogue honest.

@@ -26,6 +26,12 @@ export type LeaveRoomResult =
 export type StartRunResult =
   | { ok: true; room: Room; dungeon: DungeonLayout }
   | { ok: false; error: LobbyErrorEvent };
+export type MarkDisconnectedResult =
+  | { ok: true; mode: 'left' | 'disconnected'; deleted: boolean; room?: Room | undefined }
+  | { ok: false };
+export type RejoinResult =
+  | { ok: true; room: Room }
+  | { ok: false; error: LobbyErrorEvent };
 
 export type RoomManagerDeps = {
   generateCode?: () => string;
@@ -80,6 +86,7 @@ export class RoomManager {
       lootPool: [],
       fireDurations: new Map(),
       combatRng: createRng(0),
+      disconnectedPlayers: new Set(),
     };
     this.rooms.set(code, room);
     return { ok: true, room };
@@ -121,6 +128,49 @@ export class RoomManager {
       room.hostId = room.players[0] as PlayerId;
     }
     return { ok: true, deleted: false, room };
+  }
+
+  // Handles a socket disconnect. In a lobby it behaves like leave (player removed,
+  // host reassigned, empty room deleted). In an in-progress run the player is RETAINED
+  // — kept in `players` so board ownership/synergy are unchanged (the same guarantee
+  // solo-play relies on) and recorded in `disconnectedPlayers` so they can rejoin.
+  // A run with every player disconnected is deleted so the tick loop never runs an
+  // abandoned room (R2).
+  markDisconnected(code: RoomCode, playerId: PlayerId): MarkDisconnectedResult {
+    const room = this.rooms.get(code);
+    if (!room || !room.players.includes(playerId)) return { ok: false };
+
+    if (room.status === 'lobby') {
+      const res = this.leaveRoom(code, playerId);
+      if (!res.ok) return { ok: false };
+      return { ok: true, mode: 'left', deleted: res.deleted, room: res.room };
+    }
+
+    if (!room.disconnectedPlayers) room.disconnectedPlayers = new Set();
+    room.disconnectedPlayers.add(playerId);
+
+    if (room.players.every(p => room.disconnectedPlayers!.has(p))) {
+      this.rooms.delete(code);
+      return { ok: true, mode: 'disconnected', deleted: true };
+    }
+    return { ok: true, mode: 'disconnected', deleted: false, room };
+  }
+
+  // Re-associates a returning player with an in-progress run they still belong to,
+  // clearing their disconnected flag. The caller emits STATE_RESYNC (R3, R4).
+  rejoin(code: RoomCode, playerId: PlayerId): RejoinResult {
+    const room = this.rooms.get(code);
+    if (!room) {
+      return { ok: false, error: { code: 'ROOM_NOT_FOUND', message: 'No room with that code.' } };
+    }
+    if (room.status !== 'in-progress') {
+      return { ok: false, error: { code: 'CANNOT_REJOIN', message: 'That run is not in progress.' } };
+    }
+    if (!room.players.includes(playerId)) {
+      return { ok: false, error: { code: 'CANNOT_REJOIN', message: 'You are not a member of that run.' } };
+    }
+    room.disconnectedPlayers?.delete(playerId);
+    return { ok: true, room };
   }
 
   startRun(code: RoomCode): StartRunResult {

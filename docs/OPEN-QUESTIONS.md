@@ -21,7 +21,6 @@ Items are grouped by disposition, not priority.
 
 These are stated as uncertain *on purpose*. Do not document them as settled until checked.
 
-- **Doctrine threshold effects — wiring status.** Scoring scaffolding + tags + `BOARD_DOCTRINE_SHIFT` landed (DECISION_LOG 2026-06-22); which of the four threshold *effects* (Sanctum drain reduction, Tumor aggression, Chorus ward-doubling, Penitent free-revive) are actually applied in combat/bleed code is unconfirmed. `TODO(verify)`: audit `src/server/` for each effect; record findings in [systems/doctrine-tracking.md](systems/doctrine-tracking.md).
 - **Live deployment status.** Deploy *config* exists (Fly.io + Vercel, DECISION_LOG 2026-06-23). Whether an instance is currently live at a public URL is unknown from the repo. `TODO(unknown)`: confirm with the human; if live, record the URL in [technical/stack-and-deployment.md](technical/stack-and-deployment.md).
 - **Workspace package names.** The root README references `@veins/server` / `@veins/client`; only `@veins/shared` is confirmed in use. `TODO(verify)`: read each `package.json` and correct any doc that names the others.
 - **Exact balance/tuning values are placeholder.** `DUNGEON_START_HP=1000`, base drain, per-floor drain, `PLAYER_MAX_HP`, weapon cooldowns, `AUTO_AIM_RANGE=250` are explicitly placeholder, not balanced. `TODO(unknown)`: real values await a tuning pass — do not treat current numbers as intended design.
@@ -45,7 +44,7 @@ Clear intent exists; these are implementation gaps, not unknowns. Safe to build 
 - **Pattern-aware doctrine scoring ("theology syntax").** Chains/clusters/mirrors/isolates affecting doctrine is conceptual; implemented synergy is tag-overlap only. See [doctrines.md](doctrines.md), [systems/doctrine-tracking.md](systems/doctrine-tracking.md).
 - **Mutation system.** Out of v1 scope; no mechanics specified beyond examples. See [content/mutations.md](content/mutations.md).
 - **Real art pass.** Phaser primitives → sprites; drop-in at `GameScene` draw calls. See [art-bible.md](art-bible.md).
-- **Reconnection / resync.** A disconnected player's room is effectively lost; `STATE_RESYNC` path is designed but unbuilt. See [technical/netcode.md](technical/netcode.md).
+- **Resync sprite rehydration.** `STATE_RESYNC` (reconnection, shipped 2026-06-25) carries enemies/projectiles, but `GameScene` spawns enemies only on `ENEMY_SPAWNED`, so a rejoining client won't see existing enemies/projectiles until they next change. `TODO(build)`. See `specs/reconnection/design.md`.
 
 ## D. Knowledge-base self-sufficiency gaps (this register's own backlog)
 

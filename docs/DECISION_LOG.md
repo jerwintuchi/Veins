@@ -528,3 +528,16 @@ placement was completely broken. Also added player HP display to the HUD.
 **Test impact**: the prior `synergy.test.ts` "owner isolation" case (P2) built a single-owner board to encode the co-op rule; that now reads as solo. Updated it to a genuine multi-owner (co-op) board, which is what the rule is actually about, and added solo-board synergy + determinism cases. `manager.test.ts` "rejects NOT_ENOUGH_PLAYERS" replaced with a solo-start success case. `lobby.test.ts` expects `MIN_PLAYERS_TO_START === 1`.
 **Conflicts with the pitch (flagged for product)**: DESIGN.md and the GLOSSARY frame Veins as forced co-op ("a roguelike you literally cannot beat by yourself"), and that exact tagline now sits on the lobby. Co-op remains the intended/headline experience; solo is a relaxed secondary mode. GLOSSARY "Synergy" annotated with the solo exception; DESIGN.md gained a Solo Play note. The literal lobby tagline was left as-is pending a product call on wording.
 **Result**: 625 tests passing (60 shared + 394 server + 171 client). Zero new typecheck errors (pre-existing baselines unchanged: shared 4, server 41, client 13).
+
+---
+
+## 2026-06-25 — Active Spec switched: Solo Play → Reconnection; spec complete
+**Decision**: Built `specs/reconnection/` (T1–T6) end-to-end. Active Spec in CLAUDE.md switched solo-play → reconnection.
+**What shipped**:
+- **Stable identity** (R1): server reads `socket.handshake.auth.playerId` (falls back to `socket.id`); client persists a UUID in `localStorage` and sends it via the socket `auth` handshake, using it as `localPlayerId`. The handshake seam already existed in `registerHandlers`.
+- **Disconnect retention** (R2): `RoomManager.markDisconnected` keeps a disconnecting player in an in-progress room (ownership/synergy unchanged — the same guarantee solo-play relies on), flags them in `room.disconnectedPlayers`, and deletes the room only when *every* player is disconnected. Lobby disconnect still leaves (ROOM_UPDATE).
+- **Rejoin + snapshot** (R3/R4): `RoomManager.rejoin` + `buildStateResync(room)` (pure; single-socket `STATE_RESYNC` — the only full-state push besides the initial board sync, I6 exception). New shared events `STATE_RESYNC`, `PLAYER_CONNECTION_CHANGED`; new `CANNOT_REJOIN` lobby error.
+- **Client** (R6): auto-`rejoin` on (re)connect using a `sessionStorage` room code; `STATE_RESYNC` rebuilds `runData` and re-enters the game screen.
+**Conflict-analysis correction**: the investigation found the **doctrine threshold effects are already fully wired and consumed** (`bleedDrainMult`→`bleed/clock.ts`, `tumorAggressionActive`→`combat/roomCombat.ts`, `chorusVotiveBonus`→`roomCombat.ts`/`relic/effects.ts`, `penitentFreeRevive`→`index.ts`). The OPEN-QUESTIONS `TODO(verify)` was stale — register + docs corrected.
+**Scope boundary (documented follow-up)**: enemy/projectile *sprite* rehydration into the running Phaser scene on resync — the snapshot carries them, but `GameScene` spawns enemies only on `ENEMY_SPAWNED`. Tracked in OPEN-QUESTIONS §C.
+**Result**: 648 tests passing (60 shared + 410 server + 178 client). Zero new typecheck errors (baselines unchanged: shared 4, server 41, client 13).

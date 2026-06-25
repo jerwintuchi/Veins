@@ -20,6 +20,7 @@ import { bleedStageOf } from './room/state.js';
 import { placeRelic } from './board/placement.js';
 import { reviveWithLinkedFates } from './board/linkedFates.js';
 import { evaluateSynergies } from './board/synergy.js';
+import { buildStateResync } from './room/sync.js';
 import { movePlayer } from './combat/movement.js';
 import { stepCombat } from './combat/roomCombat.js';
 import { selectAutoAimTarget } from './combat/autoAim.js';
@@ -40,6 +41,8 @@ import {
 export interface ServerSocket {
   id: string;
   data: { playerId?: PlayerId; roomCode?: RoomCode | undefined };
+  // Handshake auth carries the client's stable player id (reconnection spec R1).
+  handshake?: { auth?: Record<string, unknown> };
   on(event: string, listener: (payload: unknown) => void): void;
   emit(event: string, payload: unknown): void;
   join(room: string): void;
@@ -69,10 +72,13 @@ function isCoord(c: unknown): c is { q: number; r: number } {
 
 export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): void {
   io.on('connection', (socket) => {
-    // In production, playerId comes from the authenticated handshake. Fall back
-    // to the socket id so the identity is always server-derived, never a client
-    // payload field (invariant I2).
-    const playerId: PlayerId = socket.data.playerId ?? socket.id;
+    // Identity comes from the handshake auth (a stable client-held token, used for
+    // reconnection — R1), falling back to any pre-set data id, then the socket id.
+    // It is connection-derived, never a per-message client field (invariant I2).
+    const authId = typeof socket.handshake?.auth?.['playerId'] === 'string'
+      ? (socket.handshake.auth['playerId'] as PlayerId)
+      : undefined;
+    const playerId: PlayerId = authId ?? socket.data.playerId ?? socket.id;
     socket.data.playerId = playerId;
 
     const currentRoom = (): Room | undefined =>
@@ -99,6 +105,26 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
       socket.data.roomCode = res.room.code;
       socket.join(res.room.code);
       io.to(res.room.code).emit('ROOM_UPDATE', { room: summarizeRoom(res.room) });
+    });
+
+    // Reconnection: a returning player re-associates with an in-progress run they
+    // still belong to and receives a full STATE_RESYNC snapshot — to this socket
+    // only (the sanctioned I6 full-state exception), never a room broadcast (R3, R4).
+    socket.on('rejoin', (payload) => {
+      const req = payload as { code?: unknown };
+      if (!req || typeof req.code !== 'string') {
+        socket.emit('LOBBY_ERROR', { code: 'INVALID_REQUEST', message: 'Malformed rejoin request.' });
+        return;
+      }
+      const res = manager.rejoin(req.code, playerId);
+      if (!res.ok) {
+        socket.emit('LOBBY_ERROR', res.error);
+        return;
+      }
+      socket.data.roomCode = res.room.code;
+      socket.join(res.room.code);
+      socket.emit('STATE_RESYNC', buildStateResync(res.room));
+      io.to(res.room.code).emit('PLAYER_CONNECTION_CHANGED', { playerId, connected: true });
     });
 
     socket.on('leave-room', () => {
@@ -352,8 +378,16 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
     socket.on('disconnect', () => {
       const code = socket.data.roomCode;
       if (!code) return;
-      const res = manager.leaveRoom(code, playerId);
-      if (res.ok && !res.deleted && res.room) {
+      // In a lobby this removes the player (ROOM_UPDATE). In an in-progress run the
+      // player is retained (ownership preserved) and only flagged disconnected, so
+      // they can rejoin — teammates get PLAYER_CONNECTION_CHANGED (R2, R5).
+      const res = manager.markDisconnected(code, playerId);
+      if (!res.ok) return;
+      if (res.mode === 'disconnected') {
+        if (!res.deleted) {
+          io.to(code).emit('PLAYER_CONNECTION_CHANGED', { playerId, connected: false });
+        }
+      } else if (!res.deleted && res.room) {
         io.to(code).emit('ROOM_UPDATE', { room: summarizeRoom(res.room) });
       }
     });

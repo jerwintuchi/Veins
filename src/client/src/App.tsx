@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
-import { useSocket } from './hooks/useSocket.js';
+import { useSocket, getStablePlayerId } from './hooks/useSocket.js';
 import { VirtualJoystick } from './components/VirtualJoystick.js';
 import { HUD } from './components/HUD.js';
 import { BoardPanel } from './components/BoardPanel.js';
@@ -11,10 +11,16 @@ import { DescendPanel } from './components/DescendPanel.js';
 import { PhaseToast } from './components/PhaseToast.js';
 import { GameScene } from './game/GameScene.js';
 import { sceneStore } from './game/SceneStore.js';
-import type { GamePhase, RoomSummary, RelicBoard, SynergyMap, Relic, RoomUpdateEvent, DungeonLayout } from '@veins/shared';
+import type { GamePhase, RoomSummary, RelicBoard, SynergyMap, Relic, RoomUpdateEvent, DungeonLayout, StateResyncEvent } from '@veins/shared';
 
 // How long (ms) a player must keep the mouse still before auto-aim re-activates.
 const MOUSE_IDLE_MS = 500;
+
+// The active run's room code is persisted so a refresh/reconnect can rejoin (R6).
+const ROOM_CODE_KEY = 'veins.roomCode';
+function rememberRoomCode(code: string): void { try { sessionStorage.setItem(ROOM_CODE_KEY, code); } catch { /* ignore */ } }
+function forgetRoomCode(): void { try { sessionStorage.removeItem(ROOM_CODE_KEY); } catch { /* ignore */ } }
+function storedRoomCode(): string | null { try { return sessionStorage.getItem(ROOM_CODE_KEY); } catch { return null; } }
 
 type Screen = 'lobby' | 'waiting' | 'game' | 'post-run';
 
@@ -38,7 +44,7 @@ export function App() {
   const [runData, setRunData] = useState<RunData | null>(null);
   const [runEndData, setRunEndData] = useState<RunEndData | null>(null);
   const [phase, setPhase] = useState<GamePhase>('loot');
-  const [localPlayerId, setLocalPlayerId] = useState<string>('');
+  const [localPlayerId] = useState<string>(() => getStablePlayerId());
   const [connected, setConnected] = useState<boolean>(false);
 
   // Derived — no extra state.
@@ -79,15 +85,22 @@ export function App() {
     const socket = socketRef.current;
     if (!socket) return;
 
-    if (socket.id) setLocalPlayerId(socket.id);
     if (socket.connected) setConnected(true);
 
-    function onConnect() { setLocalPlayerId(socket!.id ?? ''); setConnected(true); }
+    // On (re)connect, if we still remember an active run, ask to rejoin it (R6).
+    function attemptRejoin() {
+      const code = storedRoomCode();
+      if (code) socket!.emit('rejoin', { code });
+    }
+    if (socket.connected) attemptRejoin();
+
+    function onConnect() { setConnected(true); attemptRejoin(); }
     function onDisconnect() { setConnected(false); }
 
     // P2: read ev.room (RoomUpdateEvent shape) — not ev directly.
     function onRoomUpdate(ev: RoomUpdateEvent) {
       setRoomSummary(ev.room);
+      rememberRoomCode(ev.room.code);
       setScreen('waiting');
     }
 
@@ -98,11 +111,30 @@ export function App() {
       setScreen('game');
     }
 
+    // Reconnection: rebuild render state from the full snapshot and re-enter the game (R6).
+    function onStateResync(ev: StateResyncEvent) {
+      setRoomSummary(ev.room);
+      rememberRoomCode(ev.room.code);
+      setRunData({
+        board: ev.board,
+        synergyMap: ev.synergyMap,
+        relicRegistry: ev.relicRegistry,
+        lootPool: ev.lootPool,
+        dungeon: ev.dungeon as DungeonLayout, // an in-progress resync always carries a dungeon
+        playerPositions: Object.fromEntries(
+          Object.entries(ev.playerStates).map(([id, s]) => [id, { x: s.x, y: s.y }])
+        ),
+      });
+      setPhase(ev.phase);
+      setScreen('game');
+    }
+
     function onPhaseChanged(ev: { phase: GamePhase }) {
       setPhase(ev.phase);
     }
 
     function onRunEnded(ev: { outcome: string; finalFloor: number; enemiesKilled: number }) {
+      forgetRoomCode();
       setRunEndData({ outcome: ev.outcome as 'wiped' | 'extracted', finalFloor: ev.finalFloor, enemiesKilled: ev.enemiesKilled ?? 0 });
       setScreen('post-run');
     }
@@ -111,6 +143,7 @@ export function App() {
     socket.on('disconnect', onDisconnect);
     socket.on('ROOM_UPDATE', onRoomUpdate);
     socket.on('RUN_STARTED', onRunStarted);
+    socket.on('STATE_RESYNC', onStateResync);
     socket.on('PHASE_CHANGED', onPhaseChanged);
     socket.on('RUN_ENDED', onRunEnded);
     return () => {
@@ -118,6 +151,7 @@ export function App() {
       socket.off('disconnect', onDisconnect);
       socket.off('ROOM_UPDATE', onRoomUpdate);
       socket.off('RUN_STARTED', onRunStarted);
+      socket.off('STATE_RESYNC', onStateResync);
       socket.off('PHASE_CHANGED', onPhaseChanged);
       socket.off('RUN_ENDED', onRunEnded);
     };
@@ -254,7 +288,7 @@ export function App() {
           outcome={runEndData.outcome}
           finalFloor={runEndData.finalFloor}
           enemiesKilled={runEndData.enemiesKilled}
-          onReturnToLobby={() => { setScreen('lobby'); setRunEndData(null); }}
+          onReturnToLobby={() => { setScreen('lobby'); setRunEndData(null); forgetRoomCode(); }}
         />
       )}
     </div>

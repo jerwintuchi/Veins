@@ -38,6 +38,7 @@ export type LobbyErrorEvent = {
     | 'ALREADY_IN_ROOM'
     | 'NOT_ENOUGH_PLAYERS'
     | 'NOT_IN_ROOM'
-    | 'INVALID_REQUEST';
+    | 'INVALID_REQUEST'
+    | 'CANNOT_REJOIN';
   message: string;
 };

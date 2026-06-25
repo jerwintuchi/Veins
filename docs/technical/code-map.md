@@ -36,7 +36,7 @@ Path convention: source/test links are `../../src/...` (repo root from `docs/tec
 | Shared bleed state | [bleed-clock](../systems/bleed-clock.md) | [shared/bleedClock.ts](../../src/shared/src/bleedClock.ts) | [bleedClock.test.ts](../../src/shared/src/bleedClock.test.ts) |
 | Doctrine scoring (hidden) | [doctrine-tracking](../systems/doctrine-tracking.md) | [doctrine/scoring.ts](../../src/server/src/doctrine/scoring.ts) | [scoring.test.ts](../../src/server/src/doctrine/scoring.test.ts) |
 
-> **TODO(verify):** where each doctrine *threshold effect* (drain reduction / aggression / ward / free-revive) is actually applied in combat/bleed code — `scoring.ts` computes scores; effect application may live elsewhere. See [OPEN-QUESTIONS.md](../OPEN-QUESTIONS.md) §A.
+> **Verified (2026-06-25):** `scoring.ts` computes scores; the threshold *effects* are consumed in `bleed/clock.ts` (drain), `combat/roomCombat.ts` (aggression + votive bonus → `relic/effects.ts`), and `index.ts` (free revive).
 
 ## Combat
 
@@ -72,6 +72,8 @@ Path convention: source/test links are `../../src/...` (repo root from `docs/tec
 | Room state | [architecture](architecture.md) | [room/state.ts](../../src/server/src/room/state.ts) | [state.test.ts](../../src/server/src/room/state.test.ts) |
 | Room codes (`node:crypto`) | [netcode](netcode.md) | [room/roomCode.ts](../../src/server/src/room/roomCode.ts) | [roomCode.test.ts](../../src/server/src/room/roomCode.test.ts) |
 | State sync / `SocketLike` seam | [netcode](netcode.md) | [room/sync.ts](../../src/server/src/room/sync.ts) | [sync.test.ts](../../src/server/src/room/sync.test.ts) |
+| Reconnection: disconnect retention + rejoin | [netcode](netcode.md) | [room/manager.ts](../../src/server/src/room/manager.ts) (`markDisconnected`/`rejoin`) | [reconnection.test.ts](../../src/server/src/room/reconnection.test.ts) |
+| State resync snapshot (`buildStateResync`) | [netcode](netcode.md) | [room/sync.ts](../../src/server/src/room/sync.ts) | [reconnection.test.ts](../../src/server/src/room/reconnection.test.ts) |
 | Floor progression (`advanceFloor`/descend) | [extraction](../systems/extraction.md) | [floor/progression.ts](../../src/server/src/floor/progression.ts) | [progression.test.ts](../../src/server/src/floor/progression.test.ts) |
 | Socket.io handlers + server entry | [netcode](netcode.md) | [index.ts](../../src/server/src/index.ts) | [index.test.ts](../../src/server/src/index.test.ts) |
 | Shared events (delta payloads) | [netcode](netcode.md) | [shared/events.ts](../../src/shared/src/events.ts) | [events.test.ts](../../src/shared/src/events.test.ts) |

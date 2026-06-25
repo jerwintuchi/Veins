@@ -1,7 +1,8 @@
 import type { HexCoord, RelicId, PlayerId, SynergyMap, RelicBoard, Relic } from './board.js';
 import type { BleedClockState, RunOutcome } from './bleedClock.js';
 import type { DungeonLayout } from './dungeon.js';
-import type { EnemyTypeId, PlayerState } from './combat.js';
+import type { EnemyTypeId, PlayerState, AimState } from './combat.js';
+import type { RoomSummary } from './lobby.js';
 
 export type GamePhase = 'loot' | 'combat' | 'transition';
 
@@ -141,3 +142,28 @@ export type RunStartedEvent = {
   lootPool: RelicId[];
   playerPositions: Record<PlayerId, { x: number; y: number }>;
 };
+
+// Server -> single socket (reconnection). The full snapshot needed to rebuild a
+// fresh client's render state after a disconnect. This is the ONLY full-state push
+// besides the initial BOARD_STATE_SYNC (I6 exception); never broadcast to a room.
+export type StateResyncEvent = {
+  room: RoomSummary;
+  phase: GamePhase;
+  floor: number;
+  dungeon: DungeonLayout | null;
+  board: RelicBoard;
+  synergyMap: SynergyMap;
+  relicRegistry: Record<RelicId, Relic>;
+  lootPool: RelicId[];
+  bleedClock: BleedClockState;
+  bleedStage: 0 | 1 | 2 | 3;
+  outcome: RunOutcome | null;
+  playerStates: Record<PlayerId, PlayerState>;
+  aimStates: Record<PlayerId, AimState>;
+  enemies: { enemyId: string; typeId: EnemyTypeId; x: number; y: number; hp: number }[];
+  projectiles: { projectileId: string; playerId: string; x: number; y: number; dx: number; dy: number }[];
+  disconnectedPlayers: PlayerId[];
+};
+
+// Server -> Room (broadcast when a player disconnects from / rejoins an in-progress run).
+export type PlayerConnectionChangedEvent = { playerId: PlayerId; connected: boolean };

@@ -67,6 +67,11 @@ export type Room = {
   tumorAggressionActive?: boolean;  // Tumor tier-1 speeds up enemy attacks 15%
   penitentFreeRevive?: boolean;     // Penitent tier-1: next revive skips relic sacrifice
   lastAttackerByEnemy?: Map<EnemyId, PlayerId>; // for Tumor kill attribution
+
+  // --- Reconnection (specs/reconnection). Players currently disconnected from an
+  // in-progress run. They remain in `players` (ownership/synergy preserved) and can
+  // rejoin via STATE_RESYNC. A run with every player disconnected is deleted. ---
+  disconnectedPlayers?: Set<PlayerId>;
 };
 
 // Placeholder tuning — moves to the Bleed Clock spec when that work begins.
