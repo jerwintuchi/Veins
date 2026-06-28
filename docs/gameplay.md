@@ -88,8 +88,9 @@ channels but is stretched thin), so solo is complete but never the design center
 
 ### 4. The hunt and the primary verb
 
-Combat is **real-time top-down action**, reskinned from the prototype's tick for
-gothic weight. But *kill* is only one primary verb. Capture-alive, observe-and-
+Combat is **real-time top-down action**: a **weighty melee core** for gothic weight,
+layered with **ritual and ranged tools** (the loadout's counters, which reuse the
+prototype's projectile tech). But *kill* is only one primary verb. Capture-alive, observe-and-
 survive, banish-by-rite, and drive-off are equally valid and more on-theme: you
 are scholars, and you cannot capture or banish what you have not understood. The
 hunt is where the party commits to its reading and pays for being wrong (the wrong

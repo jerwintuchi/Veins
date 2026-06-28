@@ -158,3 +158,158 @@ framing, and any cause-boss whose death repairs reality. Proper nouns (God's nam
 the world, the founding events, specific Choirs, the order's saying, the
 miracle-moment system) remain open for the Director. Full fiction in docs/lore.md and
 docs/lore/.
+
+## TD-011 — Combat identity: hybrid melee core plus tools (2026-06-28)
+
+**Decision.** Combat is a weighty **melee core** (gothic tone, Blasphemous/Castlevania
+register) layered with **ritual and ranged tools** (thrown relics, ward beams, ritual
+casts). The tools are the party's counters and reuse the prototype's projectile/tick tech;
+melee is the always-available baseline.
+
+**Context.** The kept prototype combat is ranged/projectile auto-fire, but the art tone is
+melee. Hybrid fits the feel while still reusing the tick and projectile systems for the
+tool layer.
+
+**Consequences.** The bag economy now reads as "how much of the bag is fighting-tools vs
+reading-tools vs ritual-method-tools." Melee never consumes bag space; counters do.
+
+## TD-012 — Macro-structure: free, rank-gated contract board (no run-arc) (2026-06-28)
+
+**Decision.** The meta-loop is a **free contract board**: pick any unlocked contract at
+will, with **Collegium Rank** gating access to higher tiers. There is no roguelike
+run-arc or forced finale. The *expedition* remains the roguelike unit (procedural,
+high-stakes, failable); the meta is a persistent-rank hunter's board (Monster-Hunter-like
+framing, diagnosis soul).
+
+**Context.** Chosen over an escalating "pilgrimage" run and over standalone episodes. Keeps
+pick-up-and-play co-op and matches "cooperative hunting RPG with roguelike *expedition*
+structure" literally.
+
+**Consequences.** A "session" is a play sitting; the session Archive (TD-006) accumulates
+within it and resets next sitting. Persistent progression = Collegium Rank (gates tiers) +
+player skill; ephemeral progression = the session Archive. No meta-run permadeath.
+
+## TD-013 — Understanding pays off in three layers (2026-06-28)
+
+**Decision.** A correct read cashes out simultaneously in **combat** (right counters bite,
+wrong ones bounce), **method** (non-kill verbs like capture/banish require the correct
+identification), and **survival** (reading the Tell lets the party avoid lethal moments).
+
+**Context.** Pillar 3 forbids memorization but the payoff of a correct read was unspecified.
+Layering all three keeps understanding valuable across the whole encounter, not just as a
+damage-type puzzle.
+
+**Consequences.** Each trait axis must have a concrete payoff hook (see TD-014 schema):
+Aspect/Frailty -> combat, Rite-key -> method, Tell -> survival, Disposition -> tactics.
+
+## TD-014 — Diagnosis depth scales with contract tier / Collegium rank (2026-06-28)
+
+**Decision.** The number of active trait axes (and the presence of sign-masking mutations)
+scales with the contract's tier, which Collegium Rank gates. Low tier = a few axes, quick
+read; high tier = the full schema plus mutations, a forensic diagnosis.
+
+**Context.** Set by the Creative Director. Resolves what Rank gates (harder *readings*, not
+raw power) and gives the difficulty curve a knowledge-shaped vector consistent with Pillar 2.
+
+**Consequences.** The trait schema must support a variable number of exposed axes per
+expedition. Rank is the persisted account stat (TD-006) that unlocks deeper-reading contracts.
+
+## TD-015 — Origin: the Incarnate genus (Belief / Sin / Relic) (2026-06-28)
+
+**Decision.** Every Incarnate has an **Origin** (the in-fiction term), its genus: **Belief**
+(corrupted mind/thought), **Sin** (corrupted will/deed), or **Relic** (corrupted matter, a
+broken holy object). Origin is **asserted by the contract but falsifiable** at higher tiers
+(the assertion can be wrong, and discovering the misclassification is a major reversal).
+**Hybrid** Origins (e.g. Relic-Sin) appear at higher tiers, gated and balanced to stay
+rewarding rather than punishing. A scholar's **Choir** grants a *soft, fair informational
+edge* reading its own Origin's dialect, never raw power and never a gap that disadvantages
+a solo player or an off-Choir party.
+
+**The non-negotiable rule (this is the whole point).** **Origin is a property of the
+Incarnate, never the script for the expedition.** It *colors* a hunt; it never *dictates*
+the approach. What dictates how you must play (careful vs aggressive, kill vs capture)
+comes from the orthogonal contract axes (Primary Verb, Clause, Secondary Objective, Site,
+Condition), which are rolled separately. Example: "do not break the relic" is a *Clause*,
+not a property of Relic-born; without that Clause a Relic-born hunt can be fought loud.
+
+**Context.** Addresses the Director's repetition-fatigue concern ("ugh, another relic-born,
+careful mode again"). The fear is real if Origin hard-codes the approach; it is resolved by
+four things: genus-not-script, the falsifiable premise (you can never autopilot the Origin),
+hybrids (the space is larger than three), and Origin being only one axis among roughly ten
+that recombine. Origin maps to the three Choir schools (Belief->Meaning, Sin->Judgment,
+Relic->Sanctity), so lore and mechanics are the same object.
+
+**Consequences.** Origin seeds the sign *dialect*, the applicable rite/method space, site
+affinities, and behavioral pull, but not the mandate. Each Origin carries a signature
+verb-tension as a *design seed to be tuned*: Belief = attention/observation can feed it
+(**flagged tuning risk**: must not kill the diagnosis loop; likely channel-specific or a
+slow build with payoff, not "all reading is dangerous"); Sin = bound to a transgression,
+resolvable by penance/absolution; Relic = its relic is heart and prize, a tension only when
+a Clause requires it intact. The full trait schema lives in docs/systems/incarnates.md.
+
+## TD-016 — Collegium identity stages, the creed, and the Name of God (2026-06-28)
+
+**Decision.** The Collegium's members pass through three stages, which are the player's
+identity and title arc: **Aspirant** (before joining), **Seeker** (after initiation, the
+baseline player term, "because they seek truth, not certainty"), and **Witness** (earned
+by surviving expeditions, "because now they have seen"). Players are Seekers; Witness is an
+earned honorific that aligns with the higher Collegium Rank bands (TD-014). The Collegium's
+**creed** is **"We seek truth, not certainty"** (this fills the previously open "order's
+saying" slot). God is the one true God (TD-010), generally named **The Sovereign One**, with
+forms of address that vary by the speaker's theology and encode the world's disagreement:
+**The Silent Watcher** (God read as passive), **The Grand Architect** (emphasizing creation),
+and others.
+
+**Context.** Provided by the Creative Director. "Seek truth, not certainty" and "Witness /
+they have seen" tie the player's identity directly to the spine (Observe; interpretation,
+not memorization). The plurality of God's epithets is the theological disagreement made into
+flavor, mapping onto the three Choir schools.
+
+**Consequences.** "Aspirant", "Seeker", and "Witness" become canonical terms (to be added to
+GLOSSARY). The epithet system never resolves whether God is silent (holds TD-010). Threading
+into docs/GLOSSARY.md, docs/lore/collegium.md, and docs/lore/cosmology.md is pending.
+
+## TD-017 — Pre-expedition economy: the Stipend and the Blessing rite (2026-06-28)
+
+**Decision.** Two layers, both ephemeral (no account-level power; TD-006 holds).
+
+- **Stipend.** A per-contract allowance from the Collegium (scaled by tier, objectives met,
+  clauses honored), spent to requisition the loadout (tools, rites, probes) and to place the
+  **Surety**. This is the deliberate, skill-based preparation (Pillar 1). Gear is valued by
+  **utility and specialization** (the capability, method, or sign-channel it unlocks), never
+  by raw power, so the Stipend is a preparation decision, not a power-shopping ladder (Pillar 2).
+- **Blessing.** A pre-deploy rite: each **Seeker petitions** the Sovereign One and **receives**
+  (a pure, unchosen draw, because the unpredictability of grace is the point) a divine attribute
+  on a hallowed armament or on existing gear. It is **per-Seeker**, **ephemeral (one expedition)**,
+  **typed and conditional** (its worth depends on the Incarnate you theorize, so it is a wildcard
+  you read around, never a flat boost), **magnitude-capped below the swing of a correct read**
+  (luck spices, never decides), and carries **no dead blessings** (every blessing fits *some*
+  Incarnate; whether it fits *this* one is part of the read). **Built after the core diagnosis
+  loop is proven**, not at launch.
+
+**Context.** The Director wants the RNG to simulate genuine providence: grace received, then
+discovered to fit or not, which makes expeditions feel alive and fits the theology. Per-Seeker
+and pure-draw were chosen over party-level and choose-from-offered to maximize that feeling; the
+magnitude cap and conditional typing keep it fair and not overpowered. The earlier anti-luck and
+Pillar 2 concerns are mitigated by these guards rather than by removing the RNG.
+
+**Consequences.** **Anti-pattern guard:** no persistent blessings, no flat-power blessings, and no
+blessing whose magnitude exceeds the swing of a correct read. Per-Seeker variety is framed as
+distributed capability (Pillar 4), not a power hierarchy. Build order: a deferred, post-core system.
+
+## TD-018 — Downed/revive model and expedition spatial vocabulary (2026-06-28)
+
+**Decision.** **Revive:** per-player downed state; a teammate revives by spending **time and
+exposure** (which raises field pressure), not a sacrificed relic (Linked Fates is retired). A
+full-party down ends the expedition (still writes a Field Testament). Solo carries one
+self-recovery rite. **Spatial vocabulary** (known topology, dynamic placement per expedition):
+**Approach** (entry), **Sign-sources** (environmental evidence to read), the **Lair** (the
+Incarnate's seat), **Probe-features** (interactables for active reading), **Caches** (resources),
+and **Extraction**.
+
+**Context.** Residuals from the gameplay loop. Revive needed a replacement for retired Linked
+Fates; the node set gives expeditions a concrete spatial grammar for the contract/site generator.
+
+**Consequences.** Revive cost is diegetic pressure, consistent with the no-doom-clock rule
+(TD-004). The node vocabulary feeds the known-topology-dynamic-state exploration model and the
+contract axes (Site).
