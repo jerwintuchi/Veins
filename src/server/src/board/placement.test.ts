@@ -115,12 +115,14 @@ describe('placeRelic — error paths (no state mutation)', () => {
     expect(result.error.code).toBe('NOT_OWNER');
   });
 
-  it('returns SLOT_OCCUPIED when own slot already has a relic', () => {
+  it('replaces the relic in an occupied own-slot (refine a full board)', () => {
     const boardWithRelic = makeBoard([{ coord: { q: 0, r: 0 }, ownerId: 'p1', relicId: 'r_existing' }]);
     const result = placeRelic(boardWithRelic, { coord: { q: 0, r: 0 }, relicId: 'r_new' }, 'p1', LOOT, new Map());
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe('SLOT_OCCUPIED');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.board.slots['0,0']!.relicId).toBe('r_new'); // old relic discarded
+    expect(result.event.relicId).toBe('r_new');
+    expect(boardWithRelic.slots['0,0']!.relicId).toBe('r_existing'); // input not mutated
   });
 
   it('does not mutate board on NOT_OWNER', () => {
@@ -141,10 +143,11 @@ describe('placeRelic — error paths (no state mutation)', () => {
     expect(JSON.stringify(emptyBoard)).toBe(snapshot);
   });
 
-  it('does not mutate board on SLOT_OCCUPIED', () => {
+  it('does not mutate the input board when replacing (returns a new board)', () => {
     const boardWithRelic = makeBoard([{ coord: { q: 0, r: 0 }, ownerId: 'p1', relicId: 'r_existing' }]);
     const snapshot = JSON.stringify(boardWithRelic);
-    placeRelic(boardWithRelic, { coord: { q: 0, r: 0 }, relicId: 'r_new' }, 'p1', LOOT, new Map());
-    expect(JSON.stringify(boardWithRelic)).toBe(snapshot);
+    const result = placeRelic(boardWithRelic, { coord: { q: 0, r: 0 }, relicId: 'r_new' }, 'p1', LOOT, new Map());
+    expect(result.ok).toBe(true);
+    expect(JSON.stringify(boardWithRelic)).toBe(snapshot); // input untouched
   });
 });

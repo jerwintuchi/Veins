@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import type { Socket } from 'socket.io-client';
 import type { LobbyErrorEvent } from '@veins/shared';
@@ -13,38 +13,72 @@ type Props = {
 // room code with a Back control. The code input only exists in the join view.
 type View = 'menu' | 'join';
 
+// If the server never answers a create/join (dropped packet, server down after
+// connect), don't hang on "…" forever — release the button and show a message.
+const RESPONSE_TIMEOUT_MS = 8000;
+
 export function LobbyScreen({ socketRef, connected }: Props) {
   const [view, setView] = useState<View>('menu');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   // Which action is awaiting a server response, if any. Guards double-clicks.
   const [pending, setPending] = useState<'create' | 'join' | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { canInstall, promptInstall } = useInstallPrompt();
 
+  function clearTimer() {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  // Attach the LOBBY_ERROR listener once the socket actually exists. The socket
+  // is created by the parent's useSocket effect, which runs AFTER this child's
+  // effects on first mount — so we re-run when `connected` flips, by which point
+  // socketRef.current is set. Without this, a failed join would never surface an
+  // error and the button would hang on "Joining…".
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
 
     function onError(ev: LobbyErrorEvent) {
+      clearTimer();
       setError(ev.message);
       setPending(null); // server rejected — release the buttons
     }
 
     socket.on('LOBBY_ERROR', onError);
     return () => { socket.off('LOBBY_ERROR', onError); };
-  }, [socketRef]);
+  }, [socketRef, connected]);
 
   // A dropped connection mid-handshake should never leave a button stuck.
   useEffect(() => {
-    if (!connected) setPending(null);
+    if (!connected) {
+      clearTimer();
+      setPending(null);
+    }
   }, [connected]);
+
+  // Clear any pending timer if we unmount (e.g. a successful join swaps screens).
+  useEffect(() => clearTimer, []);
 
   const busy = !connected || pending !== null;
 
+  function startPending(action: 'create' | 'join') {
+    setError(null);
+    setPending(action);
+    clearTimer();
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      setPending(null);
+      setError('Could not reach the room. Check the code and try again.');
+    }, RESPONSE_TIMEOUT_MS);
+  }
+
   function createRoom() {
     if (busy) return;
-    setError(null);
-    setPending('create');
+    startPending('create');
     socketRef.current?.emit('create-room', undefined);
   }
 
@@ -53,7 +87,11 @@ export function LobbyScreen({ socketRef, connected }: Props) {
     setView('join');
   }
 
+  // Back doubles as "cancel": it always releases a pending join so the user is
+  // never stranded on "Joining…".
   function backToMenu() {
+    clearTimer();
+    setPending(null);
     setView('menu');
     setCode('');
     setError(null);
@@ -65,8 +103,7 @@ export function LobbyScreen({ socketRef, connected }: Props) {
       setError('Enter a room code.');
       return;
     }
-    setError(null);
-    setPending('join');
+    startPending('join');
     socketRef.current?.emit('join-room', { code: code.trim() });
   }
 

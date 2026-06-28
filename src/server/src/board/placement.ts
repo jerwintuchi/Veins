@@ -55,12 +55,9 @@ export function placeRelic(
     };
   }
 
-  if (slot.relicId !== null) {
-    return {
-      ok: false,
-      error: { code: 'SLOT_OCCUPIED', message: 'That slot is already occupied.' },
-    };
-  }
+  // Placing into an occupied own-slot REPLACES the relic there (the old one is
+  // discarded). This lets a player keep refining a full board; the one-per-loot-phase
+  // limit (enforced in the socket handler) still caps it to a single change per floor.
 
   const newBoard: RelicBoard = {
     slots: {

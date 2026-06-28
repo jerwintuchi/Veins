@@ -112,6 +112,35 @@ describe('LobbyScreen (T1, R1)', () => {
     expect(screen.getByTestId('lobby-error').textContent).toContain('Enter a room code.');
   });
 
+  // Back cancels a pending join so the user is never stranded on "Joining…".
+  it('Back cancels a pending join and re-enables the menu', () => {
+    const socket = makeSocket();
+    renderLobby(socket);
+    openJoinView();
+    fireEvent.change(screen.getByTestId('code-input'), { target: { value: 'abc123' } });
+    fireEvent.click(screen.getByTestId('join-submit-btn'));
+    expect(screen.getByTestId('join-submit-btn').textContent).toBe('Joining…');
+    fireEvent.click(screen.getByTestId('back-btn'));
+    const createBtn = screen.getByTestId('create-room-btn') as HTMLButtonElement;
+    expect(createBtn.disabled).toBe(false);
+    expect(createBtn.textContent).toBe('Create Room');
+  });
+
+  // Safety net: a join that gets no server response releases after the timeout.
+  it('releases a stuck join after the response timeout with a message', () => {
+    vi.useFakeTimers();
+    const socket = makeSocket();
+    renderLobby(socket);
+    openJoinView();
+    fireEvent.change(screen.getByTestId('code-input'), { target: { value: 'abc123' } });
+    fireEvent.click(screen.getByTestId('join-submit-btn'));
+    expect(screen.getByTestId('join-submit-btn').textContent).toBe('Joining…');
+    act(() => { vi.advanceTimersByTime(8000); });
+    expect(screen.getByTestId('join-submit-btn').textContent).toBe('Join');
+    expect(screen.getByTestId('lobby-error').textContent).toContain('Could not reach the room');
+    vi.useRealTimers();
+  });
+
   // --- error + connection handling ---
 
   it('LOBBY_ERROR event shows an error with role=alert', async () => {

@@ -53,7 +53,7 @@ const RESYNC_SNAPSHOT = {
   board: { slots: {} },
   synergyMap: {},
   relicRegistry: {},
-  lootPool: [],
+  lootPools: {},
   bleedClock: { current: 800, max: 1000, drainPerSecond: 1 },
   bleedStage: 1,
   outcome: null,
@@ -83,10 +83,12 @@ afterEach(() => {
 describe('App reconnection (R1, R6)', async () => {
   const { App } = await import('./App.js');
 
-  it('passes a stable player id via the socket auth handshake, persisted in localStorage (R1)', () => {
+  it('passes a stable player id via the socket auth handshake, persisted in sessionStorage (R1)', () => {
     render(<App />);
     expect(capturedAuth?.playerId).toBeTruthy();
-    expect(capturedAuth?.playerId).toBe(localStorage.getItem('veins.playerId'));
+    // Per-tab identity: stored in sessionStorage so two tabs are distinct players.
+    expect(capturedAuth?.playerId).toBe(sessionStorage.getItem('veins.playerId'));
+    expect(localStorage.getItem('veins.playerId')).toBeNull();
   });
 
   it('emits rejoin on mount when an active room code is remembered (R6)', () => {
@@ -100,6 +102,17 @@ describe('App reconnection (R1, R6)', async () => {
     expect(mockEmit).not.toHaveBeenCalledWith('rejoin', expect.anything());
   });
 
+  it('drops a stale room code and stays on the lobby when the rejoin fails', async () => {
+    sessionStorage.setItem('veins.roomCode', 'GONE12');
+    render(<App />);
+    expect(mockEmit).toHaveBeenCalledWith('rejoin', { code: 'GONE12' });
+    await act(async () => {
+      fireSocketEvent('LOBBY_ERROR', { code: 'ROOM_NOT_FOUND', message: 'No room with that code.' });
+    });
+    expect(sessionStorage.getItem('veins.roomCode')).toBeNull();
+    expect(screen.getByTestId('lobby-screen-stub')).toBeTruthy();
+  });
+
   it('STATE_RESYNC restores the game screen from the snapshot (R6)', async () => {
     render(<App />);
     expect(document.querySelector('#game-container')).toBeNull();
@@ -108,5 +121,18 @@ describe('App reconnection (R1, R6)', async () => {
     expect(screen.queryByTestId('lobby-screen-stub')).toBeNull();
     // The active room code is now remembered for a subsequent reconnect.
     expect(sessionStorage.getItem('veins.roomCode')).toBe('ABCD12');
+  });
+
+  it('passes downed players to the scene on resync so they re-grey (not blue)', async () => {
+    render(<App />);
+    const snap = {
+      ...RESYNC_SNAPSHOT,
+      playerStates: {
+        'stable-me': { hp: 0, maxHp: 100, downed: true, x: 50, y: 50 },
+        'p2': { hp: 100, maxHp: 100, downed: false, x: 60, y: 60 },
+      },
+    };
+    await act(async () => { fireSocketEvent('STATE_RESYNC', snap); });
+    expect(mockGame.registry.set).toHaveBeenCalledWith('initialDownedPlayers', ['stable-me']);
   });
 });

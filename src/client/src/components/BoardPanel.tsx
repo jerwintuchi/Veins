@@ -74,7 +74,16 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
   const [selected, setSelected] = useState<string | null>(null);
   const [revive, setRevive] = useState<ReviveState>({ active: false });
   const [placementError, setPlacementError] = useState<string | null>(null);
-  const [minimized, setMinimized] = useState(false);
+  // The local player is incapacitated while downed: no relic placement until a
+  // teammate revives them. Mirrors the server guard so the UI never invites an
+  // action the server will reject.
+  const [localDowned, setLocalDowned] = useState(false);
+  // One relic per loot phase: once the local player places, the tray locks until
+  // the next loot phase. Mirrors the server's placedThisLootPhase guard.
+  const [placedThisPhase, setPlacedThisPhase] = useState(false);
+  // Collapsed by default outside loot so the board doesn't cover combat, but the
+  // player can still expand it to view their build. Auto-expands on loot / revive.
+  const [minimized, setMinimized] = useState(phase !== 'loot');
 
   useEffect(() => {
     const el = document.createElement('style');
@@ -84,22 +93,35 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
     return () => { document.getElementById(SYNERGY_STYLE_ID)?.remove(); };
   }, []);
 
+  // Auto-expand the board when entering loot (time to place relics) or when a
+  // revive starts; auto-collapse otherwise. The player can still toggle within a
+  // phase — this only fires on phase / revive transitions.
+  useEffect(() => {
+    setMinimized(phase !== 'loot' && !revive.active);
+  }, [phase, revive.active]);
+
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
 
-    function onRunStarted(ev: { board: RelicBoard; synergyMap: SynergyMap; relicRegistry: Record<string, Relic>; lootPool?: string[] }) {
-      setState({ board: ev.board, synergyMap: ev.synergyMap, registry: ev.relicRegistry, lootPool: ev.lootPool ?? [] });
+    // lootPools is per-player (keyed by PlayerId); this client only ever shows its
+    // own pool, read by localPlayerId.
+    function onRunStarted(ev: { board: RelicBoard; synergyMap: SynergyMap; relicRegistry: Record<string, Relic>; lootPools?: Record<string, string[]> }) {
+      setState({ board: ev.board, synergyMap: ev.synergyMap, registry: ev.relicRegistry, lootPool: ev.lootPools?.[localPlayerId] ?? [] });
+      setSelected(null);
+      setLocalDowned(false);
+      setPlacedThisPhase(false);
+    }
+
+    function onBoardSync(ev: { board: RelicBoard; synergyMap: SynergyMap; relicRegistry: Record<string, Relic>; lootPools?: Record<string, string[]> }) {
+      setState({ board: ev.board, synergyMap: ev.synergyMap, registry: ev.relicRegistry, lootPool: ev.lootPools?.[localPlayerId] ?? [] });
       setSelected(null);
     }
 
-    function onBoardSync(ev: { board: RelicBoard; synergyMap: SynergyMap; relicRegistry: Record<string, Relic>; lootPool?: string[] }) {
-      setState({ board: ev.board, synergyMap: ev.synergyMap, registry: ev.relicRegistry, lootPool: ev.lootPool ?? [] });
-      setSelected(null);
-    }
-
-    function onRelicPlaced(ev: { coord: HexCoord; relicId: string; synergyMap: SynergyMap }) {
+    function onRelicPlaced(ev: { coord: HexCoord; relicId: string; ownerId: string; synergyMap: SynergyMap }) {
       setPlacementError(null);
+      // The local player has spent their one placement for this loot phase.
+      if (ev.ownerId === localPlayerId) setPlacedThisPhase(true);
       setState(prev => {
         const key = hexCoordKey(ev.coord);
         const slots = { ...prev.board.slots };
@@ -109,13 +131,21 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
           ...prev,
           board: { slots },
           synergyMap: ev.synergyMap,
-          lootPool: prev.lootPool.filter(id => id !== ev.relicId),
+          // Only this client's own pool shrinks; a teammate's placement (their pool)
+          // must not remove the relic from ours.
+          lootPool: ev.ownerId === localPlayerId
+            ? prev.lootPool.filter(id => id !== ev.relicId)
+            : prev.lootPool,
         };
       });
     }
 
-    function onPhaseChanged(ev: { phase: GamePhase; lootPool?: string[] }) {
-      if (ev.lootPool) setState(prev => ({ ...prev, lootPool: ev.lootPool! }));
+    function onPhaseChanged(ev: { phase: GamePhase; lootPools?: Record<string, string[]> }) {
+      // A new loot phase delivers fresh pools and re-enables a single placement.
+      if (ev.lootPools) {
+        setState(prev => ({ ...prev, lootPool: ev.lootPools![localPlayerId] ?? [] }));
+        setPlacedThisPhase(false);
+      }
     }
 
     function onRelicPlaceError(ev: { code: string; message: string }) {
@@ -133,11 +163,12 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
     }
 
     function onPlayerDowned(ev: { playerId: string }) {
-      if (ev.playerId === localPlayerId) return;
+      if (ev.playerId === localPlayerId) { setLocalDowned(true); return; }
       setRevive({ active: true, downedId: ev.playerId, step: 'select-source', error: null });
     }
 
     function onPlayerRevived(ev: { playerId: string }) {
+      if (ev.playerId === localPlayerId) setLocalDowned(false);
       setRevive(prev => (prev.active && prev.downedId === ev.playerId) ? { active: false } : prev);
     }
 
@@ -181,19 +212,20 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
         return;
       }
     }
+    if (localDowned) return; // incapacitated — server would reject anyway
+    if (placedThisPhase) return; // one relic per loot phase — server would reject anyway
     if (!selected) return;
     if (slot.ownerId !== localPlayerId) return;
-    if (slot.relicId !== null) return;
+    // An occupied own-slot is allowed: the placement replaces the relic there.
     setPlacementError(null);
     socketRef.current?.emit('place-relic', { coord: slot.coord, relicId: selected });
     setSelected(null);
-  }, [revive, selected, localPlayerId, socketRef]);
-
-  if (phase !== 'loot' && !revive.active) return null;
+  }, [revive, selected, localPlayerId, socketRef, localDowned, placedThisPhase]);
 
   if (minimized) {
     return (
       <button
+        data-testid="board-minimized-btn"
         onClick={() => setMinimized(false)}
         style={{
           position: 'absolute',
@@ -216,12 +248,12 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
   }
 
   const { board, synergyMap, registry, lootPool } = state;
-  const placedIds = new Set(
-    Object.values(board.slots).map(s => s.relicId).filter((id): id is string => id !== null)
-  );
+  // The tray shows the player's whole pool. We do NOT hide relics they already own:
+  // the pool backfills with acquired relics late-run so a full board can still be
+  // refined (placing into an occupied own-slot replaces the relic there).
   const available = lootPool
     .map(id => registry[id])
-    .filter((r): r is Relic => r !== undefined && !placedIds.has(r.id));
+    .filter((r): r is Relic => r !== undefined);
 
   return (
     <div
@@ -260,6 +292,22 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
       >
         ▼
       </button>
+      {localDowned && (
+        <div
+          data-testid="board-downed-hint"
+          style={{ color: '#ff5555', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}
+        >
+          You are downed — a teammate must revive you
+        </div>
+      )}
+      {!localDowned && phase !== 'loot' && !revive.active && (
+        <div
+          data-testid="board-viewonly-hint"
+          style={{ color: '#888', fontSize: '11px', fontFamily: 'monospace' }}
+        >
+          Viewing your board — place relics after clearing the floor
+        </div>
+      )}
       {revive.active && (
         <div data-testid="revive-panel" style={{ textAlign: 'center', color: '#fff', fontSize: '13px' }}>
           {revive.step === 'select-source' && (
@@ -291,8 +339,9 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
             && slot.ownerId === localPlayerId && slot.relicId !== null;
           const isReviveTarget = revive.active && revive.step === 'select-target'
             && slot.ownerId === revive.downedId && slot.relicId === null;
-          // Highlight empty owned slots when the player has a relic selected.
-          const isPlacementTarget = !!selected && slot.ownerId === localPlayerId && slot.relicId === null;
+          // Highlight ALL owned slots when a relic is selected — empty ones to place,
+          // occupied ones to replace (one change per loot phase).
+          const isPlacementTarget = !!selected && slot.ownerId === localPlayerId;
           return (
             <g
               key={key}
@@ -328,12 +377,19 @@ export function BoardPanel({ socketRef, localPlayerId, phase, players, initialBo
         })}
       </svg>
 
-      {phase === 'loot' && (
+      {phase === 'loot' && !localDowned && !revive.active && (
         <div
           data-testid="relic-tray"
           style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', maxWidth: '320px' }}
         >
-          {available.length === 0 ? (
+          {placedThisPhase ? (
+            <div
+              data-testid="relic-placed-hint"
+              style={{ color: '#88ff88', fontSize: '12px', fontFamily: 'monospace', padding: '4px 0' }}
+            >
+              Relic placed this floor — descend when ready
+            </div>
+          ) : available.length === 0 ? (
             <div
               data-testid="tray-ready-hint"
               style={{ color: '#88ff88', fontSize: '12px', fontFamily: 'monospace', padding: '4px 0' }}

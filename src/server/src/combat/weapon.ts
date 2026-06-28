@@ -41,6 +41,12 @@ export function tryAutoFire(
   room.weaponCooldowns.set(playerId, cooldown);
   if (cooldown > 0) return null;
 
+  // Hold-to-fire: a player who has opted out (desktop, not holding the mouse) does
+  // not fire even when off cooldown. Absent/true = auto-fire (mobile + default), so
+  // existing tests and mobile are unaffected. Cooldown still drained above, so the
+  // first shot after pressing fires immediately.
+  if (room.playerFiring?.get(playerId) === false) return null;
+
   // Resolve aim direction.
   const aim = room.aimStates.get(playerId);
   if (!aim) return null;

@@ -8,13 +8,14 @@ import { generateDungeon, STANDARD_DUNGEON_CONFIG } from './dungeon/bsp.js';
 import { createRng, hashSeed } from './rng/seeded.js';
 import { STARTER_RELICS } from '@veins/shared';
 import { FIRE_DURATION_S } from './relic/effects.js';
-import { generateLootPool } from './loot/pool.js';
+import { generateLootPools } from './loot/pool.js';
 
-// Helper: put a room that started in combat directly into loot phase with a non-empty pool.
+// Helper: put a room that started in combat directly into loot phase with non-empty
+// per-player pools.
 function forceLootPhase(room: Room): void {
   room.phase = 'loot';
   room.enemies = new Map();
-  room.lootPool = generateLootPool([...room.registry.keys()], room.board, room.runId, room.floor);
+  room.lootPools = generateLootPools([...room.registry.keys()], room.board, room.runId, room.floor, room.players);
 }
 
 // A fake Socket.io server that captures the connection handler and records
@@ -103,9 +104,9 @@ describe('registerHandlers wiring (smoke)', () => {
     const room = manager.getRoom('ROOMX')!;
     forceLootPhase(room);
 
-    // Host places a relic from the loot pool into one of their own slots.
+    // Host places a relic from their own loot pool into one of their own slots.
     const ownSlot = Object.values(room.board.slots).find(s => s.ownerId === 'host')!;
-    const relicId = room.lootPool[0]!;
+    const relicId = room.lootPools['host']![0]!;
     host.handlers.get('place-relic')!({ coord: ownSlot.coord, relicId });
 
     const placed = roomEmits.find(e => e.event === 'RELIC_PLACED');
@@ -156,9 +157,9 @@ describe('registerHandlers wiring (smoke)', () => {
     const room = manager.getRoom('ROOMY')!;
     forceLootPhase(room);
 
-    // Host tries to place a pool relic into a slot owned by p2.
+    // Host tries to place a relic (from the host's own pool) into a slot owned by p2.
     const otherSlot = Object.values(room.board.slots).find(s => s.ownerId === 'p2')!;
-    const relicId = room.lootPool[0]!;
+    const relicId = room.lootPools['host']![0]!;
     host.handlers.get('place-relic')!({ coord: otherSlot.coord, relicId });
 
     const err = host.emits.find(e => e.event === 'RELIC_PLACE_ERROR');
@@ -220,7 +221,7 @@ describe('registerHandlers wiring (smoke)', () => {
     expect((err!.payload as { code: string }).code).toBe('INVALID_COORD');
   });
 
-  it('RUN_STARTED carries lootPool field (empty at start — combat phase first) (T2-loot, R3)', () => {
+  it('RUN_STARTED carries lootPools field (empty at start — combat phase first) (T2-loot, R3)', () => {
     const { io, roomEmits, connect } = makeFakeIo();
     const manager = new RoomManager({ generateCode: () => 'LPOOL1', generateRunId: () => 'run-lp1' });
     registerHandlers(io, manager);
@@ -235,9 +236,9 @@ describe('registerHandlers wiring (smoke)', () => {
 
     const ev = roomEmits.find(e => e.event === 'RUN_STARTED');
     expect(ev).toBeDefined();
-    const payload = ev!.payload as { lootPool: string[] };
-    // Run starts in combat phase; loot pool is populated after the first floor is cleared.
-    expect(Array.isArray(payload.lootPool)).toBe(true);
+    const payload = ev!.payload as { lootPools: Record<string, string[]> };
+    // Run starts in combat phase; loot pools are populated after the first floor is cleared.
+    expect(typeof payload.lootPools).toBe('object');
   });
 
   it('place-relic rejects a relic not in lootPool with RELIC_NOT_IN_POOL (T2-loot, R4)', () => {
@@ -256,8 +257,8 @@ describe('registerHandlers wiring (smoke)', () => {
     const room = manager.getRoom('LPOOL2')!;
     forceLootPhase(room);
     const ownSlot = Object.values(room.board.slots).find(s => s.ownerId === 'host')!;
-    // Use a relic that exists in the registry but is NOT in the loot pool.
-    const notInPool = [...room.registry.keys()].find(id => !room.lootPool.includes(id))!;
+    // Use a relic that exists in the registry but is NOT in the host's loot pool.
+    const notInPool = [...room.registry.keys()].find(id => !room.lootPools['host']!.includes(id))!;
     host.handlers.get('place-relic')!({ coord: ownSlot.coord, relicId: notInPool });
 
     const err = host.emits.find(e => e.event === 'RELIC_PLACE_ERROR');
@@ -265,7 +266,36 @@ describe('registerHandlers wiring (smoke)', () => {
     expect((err!.payload as { code: string }).code).toBe('RELIC_NOT_IN_POOL');
   });
 
-  it('successful placement removes relic from lootPool (T2-loot, R4)', () => {
+  it('place-relic rejects a DOWNED player and does not mutate the board', () => {
+    const { io, connect } = makeFakeIo();
+    const manager = new RoomManager({ generateCode: () => 'DOWN1', generateRunId: () => 'run-down1' });
+    registerHandlers(io, manager);
+
+    const host = makeFakeSocket('host');
+    connect()!(host);
+    host.handlers.get('create-room')!(undefined);
+    const p2 = makeFakeSocket('p2');
+    connect()!(p2);
+    p2.handlers.get('join-room')!({ code: 'DOWN1' });
+    host.handlers.get('start-run')!(undefined);
+
+    const room = manager.getRoom('DOWN1')!;
+    forceLootPhase(room);
+    // Down the host, then try to place into one of their own slots.
+    room.playerStates.set('host', { ...room.playerStates.get('host')!, downed: true });
+    const ownSlot = Object.values(room.board.slots).find(s => s.ownerId === 'host' && s.relicId === null)!;
+    const relicId = room.lootPools['host']![0]!;
+    host.handlers.get('place-relic')!({ coord: ownSlot.coord, relicId });
+
+    const err = host.emits.find(e => e.event === 'RELIC_PLACE_ERROR');
+    expect(err).toBeDefined();
+    expect((err!.payload as { code: string }).code).toBe('DOWNED');
+    // Board untouched, relic still in the host's pool.
+    expect(room.board.slots[`${ownSlot.coord.q},${ownSlot.coord.r}`]!.relicId).toBeNull();
+    expect(room.lootPools['host']).toContain(relicId);
+  });
+
+  it("placing one relic clears the placer's pool (rest forfeited), not teammates' (T2-loot, R4)", () => {
     const { io, connect } = makeFakeIo();
     const manager = new RoomManager({ generateCode: () => 'LPOOL3', generateRunId: () => 'run-lp3' });
     registerHandlers(io, manager);
@@ -281,13 +311,97 @@ describe('registerHandlers wiring (smoke)', () => {
     const room = manager.getRoom('LPOOL3')!;
     forceLootPhase(room);
     const ownSlot = Object.values(room.board.slots).find(s => s.ownerId === 'host')!;
-    const relicId = room.lootPool[0]!;
-    const poolSizeBefore = room.lootPool.length;
+    const relicId = room.lootPools['host']![0]!;
+    const p2PoolBefore = [...room.lootPools['p2']!];
 
     host.handlers.get('place-relic')!({ coord: ownSlot.coord, relicId });
 
-    expect(room.lootPool).not.toContain(relicId);
-    expect(room.lootPool.length).toBe(poolSizeBefore - 1);
+    // One relic per loot phase: the host's whole pool is spent for the phase.
+    expect(room.lootPools['host']).toEqual([]);
+    expect(room.placedThisLootPhase.has('host')).toBe(true);
+    // p2's independent pool is untouched (one player can't consume another's).
+    expect(room.lootPools['p2']).toEqual(p2PoolBefore);
+    expect(room.placedThisLootPhase.has('p2')).toBe(false);
+  });
+
+  it('rejects a SECOND placement in the same loot phase with ALREADY_PLACED, then allows it again next loot phase', () => {
+    const { io, roomEmits, connect } = makeFakeIo();
+    const manager = new RoomManager({ generateCode: () => 'ONCE1', generateRunId: () => 'run-once1' });
+    registerHandlers(io, manager);
+
+    const host = makeFakeSocket('host');
+    connect()!(host);
+    host.handlers.get('create-room')!(undefined);
+    const p2 = makeFakeSocket('p2');
+    connect()!(p2);
+    p2.handlers.get('join-room')!({ code: 'ONCE1' });
+    host.handlers.get('start-run')!(undefined);
+
+    const room = manager.getRoom('ONCE1')!;
+    // First loot phase via the real path so placedThisLootPhase is reset properly.
+    room.enemies = new Map();
+    runCombatTick(io, manager, 0.05);
+
+    const ownSlots = Object.values(room.board.slots).filter(s => s.ownerId === 'host' && s.relicId === null);
+    const firstRelic = room.lootPools['host']![0]!;
+    host.handlers.get('place-relic')!({ coord: ownSlots[0]!.coord, relicId: firstRelic });
+    expect(room.placedThisLootPhase.has('host')).toBe(true);
+
+    // A second placement this phase is rejected (pool was cleared → ALREADY_PLACED first).
+    host.emits.length = 0;
+    host.handlers.get('place-relic')!({ coord: ownSlots[1]!.coord, relicId: firstRelic });
+    const err = host.emits.find(e => e.event === 'RELIC_PLACE_ERROR');
+    expect(err).toBeDefined();
+    expect((err!.payload as { code: string }).code).toBe('ALREADY_PLACED');
+
+    // Descend and clear the next floor → fresh loot phase resets the guard.
+    room.phase = 'loot';
+    host.handlers.get('descend')!(undefined);
+    const after = manager.getRoom('ONCE1')!;
+    after.enemies = new Map();
+    roomEmits.length = 0;
+    runCombatTick(io, manager, 0.05);
+    expect(after.placedThisLootPhase.has('host')).toBe(false);
+
+    host.emits.length = 0;
+    const slotNow = Object.values(after.board.slots).find(s => s.ownerId === 'host' && s.relicId === null)!;
+    host.handlers.get('place-relic')!({ coord: slotNow.coord, relicId: after.lootPools['host']![0]! });
+    expect(host.emits.find(e => e.event === 'RELIC_PLACE_ERROR')).toBeUndefined();
+  });
+
+  it('clearing a floor emits PHASE_CHANGED with a non-empty pool for EACH player, and placement then succeeds', () => {
+    const { io, roomEmits, connect } = makeFakeIo();
+    const manager = new RoomManager({ generateCode: () => 'FLOW1', generateRunId: () => 'run-flow1' });
+    registerHandlers(io, manager);
+
+    const host = makeFakeSocket('host');
+    connect()!(host);
+    host.handlers.get('create-room')!(undefined);
+    const p2 = makeFakeSocket('p2');
+    connect()!(p2);
+    p2.handlers.get('join-room')!({ code: 'FLOW1' });
+    host.handlers.get('start-run')!(undefined);
+
+    // Clear the floor: with no live enemies, the next combat tick flips to loot
+    // and generates per-player pools (the real path, not forceLootPhase).
+    const room = manager.getRoom('FLOW1')!;
+    room.enemies = new Map();
+    roomEmits.length = 0;
+    runCombatTick(io, manager, 0.05);
+
+    const phaseEv = roomEmits.find(e => e.event === 'PHASE_CHANGED');
+    expect(phaseEv).toBeDefined();
+    const pools = (phaseEv!.payload as { lootPools: Record<string, string[]> }).lootPools;
+    // Both players get their own non-empty pool keyed by their id.
+    expect(pools['host']!.length).toBeGreaterThan(0);
+    expect(pools['p2']!.length).toBeGreaterThan(0);
+
+    // The host can place a relic from their own pool — no RELIC_PLACE_ERROR.
+    host.emits.length = 0;
+    const ownSlot = Object.values(room.board.slots).find(s => s.ownerId === 'host')!;
+    host.handlers.get('place-relic')!({ coord: ownSlot.coord, relicId: pools['host']![0]! });
+    expect(host.emits.find(e => e.event === 'RELIC_PLACE_ERROR')).toBeUndefined();
+    expect(roomEmits.find(e => e.event === 'RELIC_PLACED')).toBeDefined();
   });
 });
 
@@ -424,7 +538,8 @@ describe('runCombatTick — relic effect ENEMY_DAMAGED events (T5, R3, R4, R5)',
       weaponCooldowns: new Map([['p1', 0], ['p2', 0]]),
       playerMoveInputs: new Map([['p1', { dx: 0, dy: 0 }], ['p2', { dx: 0, dy: 0 }]]),
       nextProjectileId: 0,
-      lootPool: [],
+      lootPools: {},
+      placedThisLootPhase: new Set(),
       fireDurations: new Map(),
       combatRng: createRng(hashSeed('run-1#combat')),
       ...overrides,

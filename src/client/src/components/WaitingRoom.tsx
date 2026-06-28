@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { RefObject } from 'react';
 import type { Socket } from 'socket.io-client';
+import { MdContentCopy, MdCheck } from 'react-icons/md';
 import type { RoomSummary, RoomUpdateEvent } from '@veins/shared';
 import { MAX_PLAYERS, MIN_PLAYERS_TO_START } from '@veins/shared';
 
@@ -9,6 +10,7 @@ type Props = {
   room: RoomSummary;
   localPlayerId: string;
   connected: boolean;
+  onLeave: () => void;
 };
 
 // Best-effort clipboard copy with a legacy fallback for insecure origins
@@ -37,7 +39,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function WaitingRoom({ socketRef, room: initialRoom, localPlayerId, connected }: Props) {
+export function WaitingRoom({ socketRef, room: initialRoom, localPlayerId, connected, onLeave }: Props) {
   const [room, setRoom] = useState<RoomSummary>(initialRoom);
 
   useEffect(() => {
@@ -62,7 +64,11 @@ export function WaitingRoom({ socketRef, room: initialRoom, localPlayerId, conne
   }
 
   function leaveRoom() {
+    // Tell the server, then return to the lobby immediately. Leaving is a local
+    // intent — the server sends the leaver no ack (and deletes a now-empty room),
+    // so we must not wait for an event to transition.
     socketRef.current?.emit('leave-room', undefined);
+    onLeave();
   }
 
   const copyCode = useCallback(() => {
@@ -106,19 +112,23 @@ export function WaitingRoom({ socketRef, room: initialRoom, localPlayerId, conne
 
       <div style={{ textAlign: 'center' }}>
         <p style={{ color: '#888', margin: 0, fontSize: '0.85rem' }}>ROOM CODE</p>
-        <p
-          data-testid="room-code"
-          style={{ fontSize: '2rem', fontWeight: 'bold', letterSpacing: '6px', margin: '4px 0' }}
-        >
-          {room.code}
-        </p>
-        <button
-          data-testid="copy-code-btn"
-          onClick={copyCode}
-          style={{ ...btnStyle, fontSize: '0.8rem', padding: '6px 16px' }}
-        >
-          {copied ? 'Copied!' : 'Copy Code'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+          <p
+            data-testid="room-code"
+            style={{ fontSize: '2rem', fontWeight: 'bold', letterSpacing: '6px', margin: '4px 0' }}
+          >
+            {room.code}
+          </p>
+          <button
+            data-testid="copy-code-btn"
+            onClick={copyCode}
+            aria-label={copied ? 'Copied!' : 'Copy room code'}
+            title={copied ? 'Copied!' : 'Copy room code'}
+            style={iconBtnStyle}
+          >
+            {copied ? <MdCheck size={18} color="#4caf50" /> : <MdContentCopy size={18} />}
+          </button>
+        </div>
       </div>
 
       <ul
@@ -187,4 +197,17 @@ const btnStyle: React.CSSProperties = {
   color: '#fff',
   border: '1px solid #666',
   borderRadius: '4px',
+};
+
+const iconBtnStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '6px',
+  cursor: 'pointer',
+  background: '#333',
+  color: '#fff',
+  border: '1px solid #666',
+  borderRadius: '4px',
+  lineHeight: 0,
 };

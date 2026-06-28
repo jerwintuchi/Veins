@@ -59,6 +59,8 @@ const AIM_RING_R    = 16;
 
 type PlayerArc = { arc: Phaser.GameObjects.Arc; isLocal: boolean };
 
+type InitialEnemy = { enemyId: string; typeId: EnemyTypeId; x: number; y: number; hp: number };
+
 type EnemyContainer = {
   rect:   Phaser.GameObjects.Rectangle;
   hpBg:   Phaser.GameObjects.Rectangle;
@@ -82,6 +84,10 @@ export class GameScene extends Phaser.Scene {
   private enemies = new Map<string, EnemyContainer>();
   private projectiles = new Map<string, ProjectileEntry>();
   private localPlayerId: PlayerId | null = null;
+  // The local player's current auto-aim target. The ring is re-pinned to this
+  // enemy's live position every frame (so it follows movement and is unaffected
+  // by other enemies dying), and hides only when this target is gone.
+  private localAimTargetId: string | null = null;
 
   // Authoritative server positions; sprites lerp toward these each frame.
   private playerTargets = new Map<PlayerId, { x: number; y: number }>();
@@ -109,6 +115,14 @@ export class GameScene extends Phaser.Scene {
       this.cameras.main.setZoom(this.scale.height / DESIGN_VIEW_HEIGHT);
     });
 
+    // Expose the camera to sceneStore so App.tsx can convert the cursor's screen
+    // position into world coordinates for mouse-aim (R10). This must run in
+    // create(), NOT a Scenes.Events.READY listener: READY is emitted by
+    // Systems.start() *before* create() runs, so a listener registered here
+    // would never fire — leaving sceneStore.camera null and forcing emitAim onto
+    // its off-centre screen fallback (the source of the desktop aim offset).
+    sceneStore.camera = this.cameras.main;
+
     this.dungeonGraphics = this.add.graphics();
 
     // Aim ring drawn once at origin; repositioned dynamically.
@@ -124,11 +138,25 @@ export class GameScene extends Phaser.Scene {
     // positions are passed via the game registry instead of socket events.
     const initialDungeon = this.game.registry.get('initialDungeon') as DungeonLayout | null;
     const initialPositions = this.game.registry.get('initialPlayerPositions') as Record<string, { x: number; y: number }> | null;
+    const initialEnemies = this.game.registry.get('initialEnemies') as InitialEnemy[] | null;
+    const initialDownedPlayers = this.game.registry.get('initialDownedPlayers') as string[] | null;
     if (initialDungeon) {
       this.drawDungeon(initialDungeon);
       if (initialPositions) {
         for (const [id, pos] of Object.entries(initialPositions)) {
           this.addOrUpdatePlayer(id, pos.x, pos.y, id === this.localPlayerId);
+        }
+      }
+      // Re-grey any player who is downed at resync time (PLAYER_DOWNED events were
+      // not replayed — the snapshot carries the downed state instead).
+      if (initialDownedPlayers) {
+        for (const id of initialDownedPlayers) this.downPlayer(id);
+      }
+      // Floor-1 (or post-reconnect) enemies arrive via the registry, since the
+      // ENEMY_SPAWNED events fire before this scene's listeners are bound.
+      if (initialEnemies) {
+        for (const e of initialEnemies) {
+          this.spawnEnemy(e.enemyId, e.x, e.y, e.hp, e.typeId);
         }
       }
     }
@@ -181,6 +209,10 @@ export class GameScene extends Phaser.Scene {
       if (isLocal) {
         // Snappy camera follow — sprite interpolation provides the smooth feel.
         this.cameras.main.startFollow(arc as unknown as Phaser.GameObjects.GameObject, false, 0.5, 0.5);
+        // Seed the aim origin so mouse-aim is accurate BEFORE the first PLAYER_MOVED
+        // (otherwise aim falls back to a screen-centre estimate that is wrong when
+        // the camera is off-centre — e.g. near a dungeon edge or a just-spawned player).
+        sceneStore.localPlayerPos = { x, y };
       }
     } else {
       this.playerTargets.set(playerId, { x, y });
@@ -216,11 +248,38 @@ export class GameScene extends Phaser.Scene {
       p.dot.x += p.vx * dt;
       p.dot.y += p.vy * dt;
     }
+
+    // Keep the auto-aim ring pinned to its (moving) target each frame; hide it
+    // only when the target itself is gone — never because some other enemy died.
+    if (this.localAimTargetId !== null) {
+      const c = this.enemies.get(this.localAimTargetId);
+      if (c) {
+        this.aimRing.setPosition(c.rect.x, c.rect.y);
+        if (!this.aimRing.visible) this.aimRing.setVisible(true);
+      } else if (this.aimRing.visible) {
+        this.aimRing.setVisible(false);
+      }
+    } else if (this.aimRing.visible) {
+      this.aimRing.setVisible(false);
+    }
   }
 
   movePlayer(playerId: PlayerId, x: number, y: number): void {
     const entry = this.players.get(playerId);
     if (!entry) return;
+    this.playerTargets.set(playerId, { x, y });
+    if (entry.isLocal) {
+      sceneStore.localPlayerPos = { x, y };
+    }
+  }
+
+  // Instantly place a player at (x, y) — both the sprite and its interpolation
+  // target — so there is no lerp slide. Used on floor entry (FLOOR_ADVANCED).
+  snapPlayer(playerId: PlayerId, x: number, y: number): void {
+    const entry = this.players.get(playerId);
+    if (!entry) return;
+    entry.arc.x = x;
+    entry.arc.y = y;
     this.playerTargets.set(playerId, { x, y });
     if (entry.isLocal) {
       sceneStore.localPlayerPos = { x, y };
@@ -275,7 +334,9 @@ export class GameScene extends Phaser.Scene {
     c.hpFill.destroy();
     this.enemies.delete(id);
     this.enemyTargets.delete(id);
-    if (this.aimRing.visible) this.aimRing.setVisible(false);
+    // Only drop the aim lock if THIS enemy was the target; update() then hides
+    // the ring. Other enemies dying must not affect a live lock.
+    if (id === this.localAimTargetId) this.localAimTargetId = null;
   }
 
   damageEnemy(id: string, hp: number): void {
@@ -306,6 +367,8 @@ export class GameScene extends Phaser.Scene {
   // --- auto-aim ring ---
 
   showAimRing(targetId: string | null | undefined): void {
+    // Record the target so update() keeps the ring pinned to it as it moves.
+    this.localAimTargetId = targetId ?? null;
     if (!targetId) {
       this.aimRing.setVisible(false);
       return;
@@ -335,12 +398,24 @@ export class GameScene extends Phaser.Scene {
       for (const [id, pos] of Object.entries(ev.playerPositions)) {
         this.addOrUpdatePlayer(id, pos.x, pos.y, id === this.localPlayerId);
       }
+      // Spawn floor-1 enemies carried in the payload (idempotent with ENEMY_SPAWNED).
+      for (const e of ev.enemies ?? []) {
+        this.spawnEnemy(e.enemyId, e.x, e.y, e.hp, e.typeId);
+      }
     });
 
     socket.on('FLOOR_ADVANCED', (ev: FloorAdvancedEvent) => {
       this.drawDungeon(ev.dungeon);
       // Clear stale enemies from the previous floor.
       for (const id of [...this.enemies.keys()]) this.killEnemy(id);
+      // Snap players to the new floor's entry (the server repositioned them there).
+      // A snap, not a lerp: they entered a new floor, so an instant move is correct
+      // and avoids the sprite sliding across the room over the enemy spawns.
+      if (ev.playerPositions) {
+        for (const [id, pos] of Object.entries(ev.playerPositions)) {
+          this.snapPlayer(id, pos.x, pos.y);
+        }
+      }
       sceneStore.emitFloorChanged(ev.floor);
     });
 
@@ -409,11 +484,6 @@ export class GameScene extends Phaser.Scene {
     socket.on('PHASE_CHANGED', (ev: PhaseChangedEvent) => {
       sceneStore.emitPhaseChanged(ev.phase as GamePhase);
       if (ev.phase === 'loot') SoundManager.floorCleared();
-    });
-
-    // On join, expose the camera to sceneStore (R10).
-    this.events.once(Phaser.Scenes.Events.READY, () => {
-      sceneStore.camera = this.cameras.main;
     });
   }
 

@@ -64,7 +64,7 @@ const REMOTE_ID = 'player-remote';
 const PLAYERS = [LOCAL_ID, REMOTE_ID];
 
 describe('BoardPanel visibility (T3, R4)', () => {
-  it('is hidden when phase !== loot and no revive active', () => {
+  it('is collapsed (not expanded) during combat, but offers a Relic Board button to peek', () => {
     const socket = makeSocket();
     const ref = makeRef(socket);
     render(
@@ -75,10 +75,33 @@ describe('BoardPanel visibility (T3, R4)', () => {
         players={PLAYERS}
       />
     );
+    // Expanded board is hidden during combat...
     expect(screen.queryByTestId('board-panel')).toBeNull();
+    // ...but a collapsed button lets the player expand it to view their build.
+    expect(screen.getByTestId('board-minimized-btn')).toBeTruthy();
   });
 
-  it('is visible when phase === loot', () => {
+  it('expands to a view-only board when the combat button is clicked', () => {
+    const socket = makeSocket();
+    const ref = makeRef(socket);
+    render(
+      <BoardPanel
+        socketRef={ref as never}
+        localPlayerId={LOCAL_ID}
+        phase="combat"
+        players={PLAYERS}
+        initialBoard={makeBoard(LOCAL_ID, REMOTE_ID)}
+        initialRegistry={REGISTRY}
+      />
+    );
+    fireEvent.click(screen.getByTestId('board-minimized-btn'));
+    expect(screen.getByTestId('board-panel')).toBeTruthy();
+    expect(screen.getByTestId('board-viewonly-hint')).toBeTruthy();
+    // No relic tray outside loot — placement is loot-only.
+    expect(screen.queryByTestId('relic-tray')).toBeNull();
+  });
+
+  it('is expanded automatically when phase === loot', () => {
     const socket = makeSocket();
     const ref = makeRef(socket);
     render(
@@ -90,6 +113,62 @@ describe('BoardPanel visibility (T3, R4)', () => {
       />
     );
     expect(screen.getByTestId('board-panel')).toBeTruthy();
+    expect(screen.queryByTestId('board-viewonly-hint')).toBeNull();
+  });
+
+  it('auto-expands when the phase transitions combat → loot', () => {
+    const socket = makeSocket();
+    const ref = makeRef(socket);
+    const { rerender } = render(
+      <BoardPanel socketRef={ref as never} localPlayerId={LOCAL_ID} phase="combat" players={PLAYERS} />
+    );
+    expect(screen.queryByTestId('board-panel')).toBeNull();
+    rerender(
+      <BoardPanel socketRef={ref as never} localPlayerId={LOCAL_ID} phase="loot" players={PLAYERS} />
+    );
+    expect(screen.getByTestId('board-panel')).toBeTruthy();
+  });
+
+  // Full real-flow regression for per-player pools: run starts in combat with
+  // EMPTY pools (as the server sends), the floor clears → PHASE_CHANGED delivers
+  // this player's pool, the tray appears, and clicking an owned slot places it.
+  it('combat start (empty pool) → PHASE_CHANGED delivers the pool → can place a relic', async () => {
+    const socket = makeSocket();
+    const ref = makeRef(socket);
+    const { rerender } = render(
+      <BoardPanel socketRef={ref as never} localPlayerId={LOCAL_ID} phase="combat" players={PLAYERS} />
+    );
+
+    // Run starts in combat: server sends empty per-player pools.
+    await act(async () => {
+      socket.handlers.get('RUN_STARTED')!({
+        board: makeBoard(LOCAL_ID, REMOTE_ID),
+        synergyMap: {},
+        relicRegistry: REGISTRY,
+        lootPools: {},
+      });
+    });
+    expect(screen.queryByTestId('relic-tray')).toBeNull(); // no tray during combat
+
+    // Floor cleared → loot phase with this player's pool.
+    await act(async () => {
+      socket.handlers.get('PHASE_CHANGED')!({ phase: 'loot', lootPools: { [LOCAL_ID]: LOOT_POOL } });
+    });
+    rerender(
+      <BoardPanel socketRef={ref as never} localPlayerId={LOCAL_ID} phase="loot" players={PLAYERS} />
+    );
+
+    // Tray now shows the player's relics; select one and place it on an owned slot.
+    expect(screen.getByTestId('relic-card-ember-core')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('relic-card-ember-core'));
+    const localGroup = Array.from(document.querySelectorAll('svg g')).find(
+      g => g.querySelector('polygon')?.getAttribute('fill') === '#4488ff'
+    );
+    fireEvent.click(localGroup!);
+
+    const emitted = socket.emits.find(e => e.event === 'place-relic');
+    expect(emitted).toBeDefined();
+    expect((emitted!.payload as { relicId: string }).relicId).toBe('ember-core');
   });
 });
 
@@ -229,7 +308,7 @@ describe('BoardPanel relic tray (T3, R5)', () => {
         board,
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: LOOT_POOL,
+        lootPools: { [LOCAL_ID]: LOOT_POOL },
       });
     });
 
@@ -254,7 +333,7 @@ describe('BoardPanel relic tray (T3, R5)', () => {
         board: makeBoard(LOCAL_ID, REMOTE_ID),
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: [],
+        lootPools: {},
       });
     });
 
@@ -279,16 +358,45 @@ describe('BoardPanel relic tray (T3, R5)', () => {
         board: makeBoard(LOCAL_ID, REMOTE_ID),
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: [],
+        lootPools: {},
       });
     });
     expect(screen.queryByTestId('relic-card-ember-core')).toBeNull();
 
     await act(async () => {
-      socket.handlers.get('PHASE_CHANGED')!({ phase: 'loot', lootPool: ['ember-core'] });
+      socket.handlers.get('PHASE_CHANGED')!({ phase: 'loot', lootPools: { [LOCAL_ID]: ['ember-core'] } });
     });
     expect(screen.getByTestId('relic-card-ember-core')).toBeTruthy();
     expect(screen.queryByTestId('relic-card-torch-brand')).toBeNull();
+  });
+
+  it("a teammate's RELIC_PLACED does not remove the relic from the local tray (per-player pools)", async () => {
+    const socket = makeSocket();
+    const ref = makeRef(socket);
+    render(
+      <BoardPanel
+        socketRef={ref as never}
+        localPlayerId={LOCAL_ID}
+        phase="loot"
+        players={PLAYERS}
+      />
+    );
+
+    await act(async () => {
+      socket.handlers.get('RUN_STARTED')!({
+        board: makeBoard(LOCAL_ID, REMOTE_ID),
+        synergyMap: {},
+        relicRegistry: REGISTRY,
+        lootPools: { [LOCAL_ID]: LOOT_POOL },
+      });
+      // The REMOTE player places ember-core on their own slot.
+      socket.handlers.get('RELIC_PLACED')!({
+        coord: { q: -1, r: 0 }, relicId: 'ember-core', ownerId: REMOTE_ID, synergyMap: {},
+      });
+    });
+
+    // Local player's pool is untouched — ember-core is still offered to them.
+    expect(screen.getByTestId('relic-card-ember-core')).toBeTruthy();
   });
 
   it('clicking a relic card selects it (data-selected becomes true)', async () => {
@@ -309,7 +417,7 @@ describe('BoardPanel relic tray (T3, R5)', () => {
         board,
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: LOOT_POOL,
+        lootPools: { [LOCAL_ID]: LOOT_POOL },
       });
     });
 
@@ -336,7 +444,7 @@ describe('BoardPanel relic tray (T3, R5)', () => {
         board,
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: LOOT_POOL,
+        lootPools: { [LOCAL_ID]: LOOT_POOL },
       });
     });
 
@@ -348,6 +456,53 @@ describe('BoardPanel relic tray (T3, R5)', () => {
 });
 
 describe('BoardPanel place-relic flow (T3, R6, R7)', () => {
+  it('clicking an OCCUPIED owned slot with a selected relic emits place-relic (replacement)', async () => {
+    const socket = makeSocket();
+    const ref = makeRef(socket);
+    render(
+      <BoardPanel socketRef={ref as never} localPlayerId={LOCAL_ID} phase="loot" players={PLAYERS} />
+    );
+    const board: RelicBoard = {
+      slots: {
+        '0,0': { coord: { q: 0, r: 0 }, ownerId: LOCAL_ID, relicId: 'torch-brand' }, // occupied
+        '1,0': { coord: { q: 1, r: 0 }, ownerId: LOCAL_ID, relicId: null },
+        '-1,0': { coord: { q: -1, r: 0 }, ownerId: REMOTE_ID, relicId: null },
+      },
+    };
+    await act(async () => {
+      socket.handlers.get('RUN_STARTED')!({
+        board, synergyMap: {}, relicRegistry: REGISTRY, lootPools: { [LOCAL_ID]: ['ember-core'] },
+      });
+    });
+    fireEvent.click(screen.getByTestId('relic-card-ember-core'));
+    // The occupied local slot renders the existing relic's name as <text>.
+    const occupied = Array.from(document.querySelectorAll('svg g')).find(
+      g => g.querySelector('polygon')?.getAttribute('fill') === '#4488ff' && g.querySelector('text')
+    );
+    fireEvent.click(occupied!);
+    const emitted = socket.emits.find(e => e.event === 'place-relic');
+    expect(emitted).toBeDefined();
+    expect((emitted!.payload as { relicId: string }).relicId).toBe('ember-core');
+  });
+
+  it('offers a relic the player already has placed (pool backfill — re-placeable)', async () => {
+    const socket = makeSocket();
+    const ref = makeRef(socket);
+    render(
+      <BoardPanel socketRef={ref as never} localPlayerId={LOCAL_ID} phase="loot" players={PLAYERS} />
+    );
+    const board: RelicBoard = {
+      slots: { '0,0': { coord: { q: 0, r: 0 }, ownerId: LOCAL_ID, relicId: 'ember-core' } },
+    };
+    await act(async () => {
+      socket.handlers.get('RUN_STARTED')!({
+        board, synergyMap: {}, relicRegistry: REGISTRY, lootPools: { [LOCAL_ID]: ['ember-core'] },
+      });
+    });
+    // ember-core is on the board AND still offered in the tray (no placed-filter).
+    expect(screen.getByTestId('relic-card-ember-core')).toBeTruthy();
+  });
+
   it('clicking an owned empty slot with a selected relic emits place-relic', async () => {
     const socket = makeSocket();
     const ref = makeRef(socket);
@@ -366,7 +521,7 @@ describe('BoardPanel place-relic flow (T3, R6, R7)', () => {
         board,
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: LOOT_POOL,
+        lootPools: { [LOCAL_ID]: LOOT_POOL },
       });
     });
 
@@ -388,6 +543,83 @@ describe('BoardPanel place-relic flow (T3, R6, R7)', () => {
     expect((emitted!.payload as { relicId: string }).relicId).toBe('ember-core');
   });
 
+  it('locks the tray after one placement, and a new loot phase unlocks it', async () => {
+    const socket = makeSocket();
+    const ref = makeRef(socket);
+    render(
+      <BoardPanel socketRef={ref as never} localPlayerId={LOCAL_ID} phase="loot" players={PLAYERS} />
+    );
+
+    await act(async () => {
+      socket.handlers.get('RUN_STARTED')!({
+        board: makeBoard(LOCAL_ID, REMOTE_ID),
+        synergyMap: {},
+        relicRegistry: REGISTRY,
+        lootPools: { [LOCAL_ID]: LOOT_POOL },
+      });
+      // The local player places their one relic for this phase.
+      socket.handlers.get('RELIC_PLACED')!({
+        coord: { q: 0, r: 0 }, relicId: 'ember-core', ownerId: LOCAL_ID, synergyMap: {},
+      });
+    });
+
+    // Tray is locked: placed-hint shown, the other relic no longer offered.
+    expect(screen.getByTestId('relic-placed-hint')).toBeTruthy();
+    expect(screen.queryByTestId('relic-card-torch-brand')).toBeNull();
+
+    // Selecting/clicking does nothing now — no further place-relic is emitted.
+    socket.emits.length = 0;
+    const localGroup = Array.from(document.querySelectorAll('svg g')).find(
+      g => g.querySelector('polygon')?.getAttribute('fill') === '#4488ff'
+    );
+    fireEvent.click(localGroup!);
+    expect(socket.emits.find(e => e.event === 'place-relic')).toBeUndefined();
+
+    // Next loot phase delivers a fresh pool and re-enables a single placement.
+    await act(async () => {
+      socket.handlers.get('PHASE_CHANGED')!({ phase: 'loot', lootPools: { [LOCAL_ID]: ['torch-brand'] } });
+    });
+    expect(screen.queryByTestId('relic-placed-hint')).toBeNull();
+    expect(screen.getByTestId('relic-card-torch-brand')).toBeTruthy();
+  });
+
+  it('a downed local player sees a downed message, no relic tray, and cannot place', async () => {
+    const socket = makeSocket();
+    const ref = makeRef(socket);
+    render(
+      <BoardPanel
+        socketRef={ref as never}
+        localPlayerId={LOCAL_ID}
+        phase="loot"
+        players={PLAYERS}
+      />
+    );
+
+    const board = makeBoard(LOCAL_ID, REMOTE_ID);
+    await act(async () => {
+      socket.handlers.get('RUN_STARTED')!({ board, synergyMap: {}, relicRegistry: REGISTRY, lootPools: { [LOCAL_ID]: LOOT_POOL } });
+      // The local player goes down.
+      socket.handlers.get('PLAYER_DOWNED')!({ playerId: LOCAL_ID });
+    });
+
+    expect(screen.getByTestId('board-downed-hint')).toBeTruthy();
+    expect(screen.queryByTestId('relic-tray')).toBeNull();
+
+    // Even clicking an owned slot must not emit place-relic while downed.
+    const localGroup = Array.from(document.querySelectorAll('svg g')).find(
+      g => g.querySelector('polygon')?.getAttribute('fill') === '#4488ff'
+    );
+    fireEvent.click(localGroup!);
+    expect(socket.emits.find(e => e.event === 'place-relic')).toBeUndefined();
+
+    // Being revived restores the tray.
+    await act(async () => {
+      socket.handlers.get('PLAYER_REVIVED')!({ playerId: LOCAL_ID, hp: 100 });
+    });
+    expect(screen.queryByTestId('board-downed-hint')).toBeNull();
+    expect(screen.getByTestId('relic-tray')).toBeTruthy();
+  });
+
   it('clicking an unowned slot with a selected relic does NOT emit place-relic', async () => {
     const socket = makeSocket();
     const ref = makeRef(socket);
@@ -406,7 +638,7 @@ describe('BoardPanel place-relic flow (T3, R6, R7)', () => {
         board,
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: LOOT_POOL,
+        lootPools: { [LOCAL_ID]: LOOT_POOL },
       });
     });
 
@@ -442,7 +674,7 @@ describe('BoardPanel place-relic flow (T3, R6, R7)', () => {
         board,
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: LOOT_POOL,
+        lootPools: { [LOCAL_ID]: LOOT_POOL },
       });
     });
 
@@ -480,7 +712,7 @@ describe('BoardPanel place-relic flow (T3, R6, R7)', () => {
         board: makeBoard(LOCAL_ID, REMOTE_ID),
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: LOOT_POOL,
+        lootPools: { [LOCAL_ID]: LOOT_POOL },
       });
     });
     expect(screen.getByTestId('relic-card-ember-core')).toBeTruthy();
@@ -498,7 +730,7 @@ describe('BoardPanel place-relic flow (T3, R6, R7)', () => {
         board: syncedBoard,
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: ['torch-brand'],
+        lootPools: { [LOCAL_ID]: ['torch-brand'] },
       });
     });
 
@@ -545,7 +777,7 @@ describe('BoardPanel synergy animation (Synergy T1, R1, R2, R3)', () => {
         board,
         synergyMap: { 'ember-core': true },
         relicRegistry: REGISTRY,
-        lootPool: [],
+        lootPools: {},
       });
     });
 
@@ -570,7 +802,7 @@ describe('BoardPanel synergy animation (Synergy T1, R1, R2, R3)', () => {
         board: makeBoard(LOCAL_ID, REMOTE_ID),
         synergyMap: {},
         relicRegistry: REGISTRY,
-        lootPool: [],
+        lootPools: {},
       });
     });
 
@@ -599,7 +831,7 @@ describe('BoardPanel synergy animation (Synergy T1, R1, R2, R3)', () => {
         board,
         synergyMap: {},   // ember-core NOT in synergyMap
         relicRegistry: REGISTRY,
-        lootPool: [],
+        lootPools: {},
       });
     });
 
@@ -860,16 +1092,18 @@ describe('BoardPanel — placement error + empty tray hint (T1, R1, R2)', () => 
     expect(screen.queryByTestId('placement-error')).toBeNull();
   });
 
-  it('tray-ready-hint shown when all relics placed (R2)', async () => {
-    const { socket } = renderLoot(['ember-core']);
-    // Place the only relic.
+  it('relic-placed-hint shown after the player places their one relic this phase (R2)', async () => {
+    const { socket } = renderLoot(['ember-core', 'torch-brand']);
+    // Place one relic — one per loot phase, so the tray locks afterward.
     await act(async () => {
       socket.handlers.get('RELIC_PLACED')!({
         coord: { q: 0, r: 0 }, relicId: 'ember-core',
         ownerId: LOCAL_ID, synergyMap: {},
       });
     });
-    expect(screen.getByTestId('tray-ready-hint')).not.toBeNull();
+    expect(screen.getByTestId('relic-placed-hint')).not.toBeNull();
+    // The still-available relic is no longer offered (locked for the phase).
+    expect(screen.queryByTestId('relic-card-torch-brand')).toBeNull();
   });
 
   it('tray-ready-hint NOT shown when relics still available (R2)', () => {

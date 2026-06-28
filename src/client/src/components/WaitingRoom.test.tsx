@@ -35,12 +35,19 @@ const BASE_ROOM: RoomSummary = {
 
 function renderRoom(
   socket: FakeSocket,
-  opts: { room?: RoomSummary; localPlayerId?: string; connected?: boolean } = {}
+  opts: { room?: RoomSummary; localPlayerId?: string; connected?: boolean; onLeave?: () => void } = {}
 ) {
-  const { room = BASE_ROOM, localPlayerId = HOST_ID, connected = true } = opts;
-  return render(
-    <WaitingRoom socketRef={makeRef(socket) as never} room={room} localPlayerId={localPlayerId} connected={connected} />
+  const { room = BASE_ROOM, localPlayerId = HOST_ID, connected = true, onLeave = vi.fn() } = opts;
+  const result = render(
+    <WaitingRoom
+      socketRef={makeRef(socket) as never}
+      room={room}
+      localPlayerId={localPlayerId}
+      connected={connected}
+      onLeave={onLeave}
+    />
   );
+  return { ...result, onLeave };
 }
 
 describe('WaitingRoom (T2, R2)', () => {
@@ -88,11 +95,12 @@ describe('WaitingRoom (T2, R2)', () => {
     expect(socket.emits.some(e => e.event === 'start-run')).toBe(true);
   });
 
-  it('clicking Leave Room emits leave-room', () => {
+  it('clicking Leave Room emits leave-room and calls onLeave (returns to lobby)', () => {
     const socket = makeSocket();
-    renderRoom(socket);
+    const { onLeave } = renderRoom(socket);
     fireEvent.click(screen.getByTestId('leave-btn'));
     expect(socket.emits.some(e => e.event === 'leave-room')).toBe(true);
+    expect(onLeave).toHaveBeenCalledTimes(1);
   });
 
   it('ROOM_UPDATE event updates the player list', async () => {
@@ -139,15 +147,19 @@ describe('WaitingRoom (T2, R2)', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('ABCD12');
   });
 
-  it('copy-code-btn shows "Copied!" briefly after click', async () => {
+  it('copy-code-btn is an icon button whose label flips to "Copied!" briefly', async () => {
     vi.useFakeTimers();
     renderRoom(makeSocket());
-    await act(async () => { fireEvent.click(screen.getByTestId('copy-code-btn')); });
+    const btn = screen.getByTestId('copy-code-btn');
+    // icon-only button: no text label, uses aria-label instead
+    expect(btn.getAttribute('aria-label')).toBe('Copy room code');
+    expect(btn.querySelector('svg')).not.toBeNull();
+    await act(async () => { fireEvent.click(btn); });
     // allow the writeText promise microtask to resolve under fake timers
     await act(async () => { await Promise.resolve(); });
-    expect(screen.getByTestId('copy-code-btn').textContent).toBe('Copied!');
+    expect(btn.getAttribute('aria-label')).toBe('Copied!');
     await act(async () => { vi.advanceTimersByTime(1500); });
-    expect(screen.getByTestId('copy-code-btn').textContent).toBe('Copy Code');
+    expect(btn.getAttribute('aria-label')).toBe('Copy room code');
     vi.useRealTimers();
   });
 });

@@ -20,9 +20,12 @@ const playerId = authId ?? socket.data.playerId ?? socket.id;
 Identity is per-connection, not per-message, so I2 holds. The id is an unguessable client-held
 token (UUID) — guest-grade auth; real auth is future (see Security note).
 
-Client: `getStablePlayerId()` reads/creates `localStorage['veins.playerId']` and is passed via
+Client: `getStablePlayerId()` reads/creates `sessionStorage['veins.playerId']` and is passed via
 `io(url, { auth: { playerId } })`. The client uses it as `localPlayerId` everywhere (replacing
-`socket.id`), so owner colours / "is this me" checks match the server.
+`socket.id`), so owner colours / "is this me" checks match the server. sessionStorage (not
+localStorage) makes the id per-tab — two tabs are distinct players (local multi-client testing
+works; no same-browser self-join collision) — while still surviving a reload so reconnection
+holds. See DECISION_LOG 2026-06-24.
 
 ## Disconnect retention (R2)
 

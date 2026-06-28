@@ -13,9 +13,9 @@
 | Client | `src/client/`  | Render + UI only. Untrusted. Zero game logic.                 |
 
 ## Active Spec
-@specs/reconnection/requirements.md
-@specs/reconnection/design.md
-@specs/reconnection/tasks.md
+@specs/client-prediction/requirements.md
+@specs/client-prediction/design.md
+@specs/client-prediction/tasks.md
 
 ## Workflow Rules
 @.claude/rules/spec-workflow.md

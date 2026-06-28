@@ -27,7 +27,7 @@ function makeDoctrineRoom(overrides: Partial<Room> = {}): Room {
     outcome: null, dungeon: null,
     enemies: new Map(), playerStates: new Map(), aimStates: new Map(),
     projectiles: new Map(), weaponCooldowns: new Map(), playerMoveInputs: new Map(),
-    nextProjectileId: 0, lootPool: [], fireDurations: new Map(),
+    nextProjectileId: 0, lootPools: {}, placedThisLootPhase: new Set(), fireDurations: new Map(),
     combatRng: { next: () => 0 } as never,
     enemiesKilled: 0,
     doctrineScores: { sanctum: 0, tumor: 0, chorus: 0, penitent: 0 },

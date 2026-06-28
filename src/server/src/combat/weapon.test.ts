@@ -50,7 +50,8 @@ function makeRoom(overrides: Partial<Room> = {}): Room {
     weaponCooldowns: new Map([['p1', 0], ['p2', 0]]),
     playerMoveInputs: new Map([['p1', { dx: 0, dy: 0 }], ['p2', { dx: 0, dy: 0 }]]),
     nextProjectileId: 0,
-    lootPool: [],
+    lootPools: {},
+    placedThisLootPhase: new Set(),
     fireDurations: new Map(),
     combatRng: createRng(hashSeed('run-1#combat')),
     ...overrides,
@@ -105,6 +106,28 @@ describe('tryAutoFire (T3, R5)', () => {
     expect(proj).not.toBeNull();
     expect(proj!.dx).toBeCloseTo(0);
     expect(proj!.dy).toBeCloseTo(1);
+  });
+
+  // Hold-to-fire (desktop): a player who opted out (firing=false) does not fire
+  // even with a valid aim and ready cooldown; setting firing=true fires again.
+  it('does not fire when the player has opted out (playerFiring=false)', () => {
+    const room = makeRoom();
+    room.aimStates.set('p1', { mode: 'manual', dx: 1, dy: 0 });
+    room.playerFiring = new Map([['p1', false]]);
+    expect(tryAutoFire(room, 'p1', DT)).toBeNull();
+  });
+
+  it('fires when the player is holding fire (playerFiring=true)', () => {
+    const room = makeRoom();
+    room.aimStates.set('p1', { mode: 'manual', dx: 1, dy: 0 });
+    room.playerFiring = new Map([['p1', true]]);
+    expect(tryAutoFire(room, 'p1', DT)).not.toBeNull();
+  });
+
+  it('auto-fires by default when playerFiring is absent (mobile / unchanged)', () => {
+    const room = makeRoom(); // no playerFiring map
+    room.aimStates.set('p1', { mode: 'manual', dx: 1, dy: 0 });
+    expect(tryAutoFire(room, 'p1', DT)).not.toBeNull();
   });
 
   it('resets cooldown to WEAPON_COOLDOWN_MS after firing', () => {

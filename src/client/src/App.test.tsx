@@ -64,6 +64,9 @@ beforeEach(() => {
   // Do NOT call the callback synchronously — the WASD tick loop would recurse infinitely.
   vi.stubGlobal('requestAnimationFrame', vi.fn().mockReturnValue(0));
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  // Treat the test environment as a desktop (fine pointer) so hold-to-fire + manual
+  // mouse-aim are active.
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   Object.defineProperty(window, 'innerWidth', { value: 800, configurable: true });
   Object.defineProperty(window, 'innerHeight', { value: 600, configurable: true });
   mockEmit.mockClear();
@@ -137,29 +140,104 @@ describe('App — screen state machine (T3, R3)', async () => {
 describe('App mouse-aim listener (T9, R10)', async () => {
   const { App } = await import('./App.js');
 
-  it('falls back to viewport-centre when camera is null', () => {
+  // Mouse-aim only emits while in a run, never from the lobby — so each test
+  // advances to the game screen before dispatching mouse movement.
+  function renderInGame() {
     render(<App />);
+    act(() => {
+      fireSocketEvent('ROOM_UPDATE', {
+        room: { code: 'ABCD12', status: 'lobby', hostId: 'test-socket-id', players: ['test-socket-id', 'p2'] },
+      });
+      fireSocketEvent('RUN_STARTED', { board: { slots: {} }, synergyMap: {}, relicRegistry: {} });
+    });
+  }
+
+  it('does not emit aim-player from the lobby screen', () => {
+    render(<App />);
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 500, clientY: 300, bubbles: true }));
+    expect(mockEmit).not.toHaveBeenCalledWith('aim-player', expect.anything());
+  });
+
+  it('falls back to viewport-centre when camera is null', () => {
+    renderInGame();
     const ev = new MouseEvent('mousemove', { clientX: 500, clientY: 300, bubbles: true });
     window.dispatchEvent(ev);
     expect(mockEmit).toHaveBeenCalledWith('aim-player', expect.objectContaining({ dx: 100, dy: 0 }));
   });
 
   it('uses world coordinates when camera and playerPos are set', () => {
-    render(<App />);
+    renderInGame();
     (sceneStore as unknown as { camera: typeof mockCamera }).camera = mockCamera;
     (sceneStore as unknown as { localPlayerPos: { x: number; y: number } }).localPlayerPos = { x: 500, y: 300 };
     window.dispatchEvent(new MouseEvent('mousemove', { clientX: 500, clientY: 300, bubbles: true }));
     expect(mockEmit).toHaveBeenCalledWith('aim-player', expect.objectContaining({ dx: 100, dy: 50 }));
   });
 
-  it('reverts to auto-aim (zero vector) after 500ms of mouse inactivity', () => {
+  it('does NOT auto-revert aim after the mouse goes idle (sticky cursor aim)', () => {
     vi.useFakeTimers();
-    render(<App />);
+    renderInGame();
     window.dispatchEvent(new MouseEvent('mousemove', { clientX: 500, clientY: 300, bubbles: true }));
     mockEmit.mockClear();
-    vi.advanceTimersByTime(600);
-    expect(mockEmit).toHaveBeenCalledWith('aim-player', { dx: 0, dy: 0 });
+    vi.advanceTimersByTime(1000);
+    expect(mockEmit).not.toHaveBeenCalledWith('aim-player', { dx: 0, dy: 0 });
     vi.useRealTimers();
+  });
+});
+
+describe('App game-screen overlay stacking', async () => {
+  const { App } = await import('./App.js');
+
+  // Regression: the VirtualJoystick is a full-screen fixed (inset:0) overlay. If
+  // it renders AFTER the UI panels, paint order (no z-index in play) puts it on
+  // top and it swallows every click/tap — the board "can't be interacted with".
+  // It must render BEFORE the panels so they receive their own pointer events.
+  it('renders the joystick overlay before the UI panels in DOM order', () => {
+    render(<App />);
+    act(() => {
+      fireSocketEvent('ROOM_UPDATE', {
+        room: { code: 'ABCD12', status: 'lobby', hostId: 'test-socket-id', players: ['test-socket-id', 'p2'] },
+      });
+      fireSocketEvent('RUN_STARTED', { board: { slots: {} }, synergyMap: {}, relicRegistry: {} });
+    });
+    const joystick = screen.getByTestId('virtual-joystick');
+    const hud = screen.getByTestId('bleed-fill'); // lives inside the HUD panel
+    // The HUD (and every panel after it) must FOLLOW the joystick in the DOM.
+    expect(joystick.compareDocumentPosition(hud) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe('App hold-to-fire (desktop)', async () => {
+  const { App } = await import('./App.js');
+
+  function toGame() {
+    render(<App />);
+    act(() => {
+      fireSocketEvent('ROOM_UPDATE', {
+        room: { code: 'ABCD12', status: 'lobby', hostId: 'test-socket-id', players: ['test-socket-id', 'p2'] },
+      });
+      fireSocketEvent('RUN_STARTED', { board: { slots: {} }, synergyMap: {}, relicRegistry: {} });
+    });
+  }
+
+  it('opts out of auto-fire when entering the game (desktop)', () => {
+    toGame();
+    expect(mockEmit).toHaveBeenCalledWith('set-firing', { firing: false });
+  });
+
+  it('fires while the left mouse button is held (down → true, up → false)', () => {
+    toGame();
+    mockEmit.mockClear();
+    window.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }));
+    expect(mockEmit).toHaveBeenCalledWith('set-firing', { firing: true });
+    window.dispatchEvent(new MouseEvent('mouseup', { button: 0, bubbles: true }));
+    expect(mockEmit).toHaveBeenCalledWith('set-firing', { firing: false });
+  });
+
+  it('ignores non-left mouse buttons', () => {
+    toGame();
+    mockEmit.mockClear();
+    window.dispatchEvent(new MouseEvent('mousedown', { button: 2, bubbles: true })); // right-click
+    expect(mockEmit).not.toHaveBeenCalledWith('set-firing', { firing: true });
   });
 });
 

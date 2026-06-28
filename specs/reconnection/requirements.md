@@ -14,8 +14,10 @@ Resolves OPEN-QUESTIONS §C "Reconnection / resync". Decision logged in DECISION
 **R1** — Stable player identity across connections.
 - AC: the server derives `playerId` from `socket.handshake.auth.playerId` when it is a string,
   else falls back to `socket.data.playerId ?? socket.id` (existing behaviour preserved).
-- AC: the client generates a persistent id (localStorage `veins.playerId`), passes it via the
-  socket `auth` handshake, and uses it as `localPlayerId`.
+- AC: the client generates a persistent id (sessionStorage `veins.playerId` — per-tab so two
+  tabs are distinct players, but survives reload for reconnection), passes it via the socket
+  `auth` handshake, and uses it as `localPlayerId`. (Originally localStorage; changed —
+  see DECISION_LOG 2026-06-24.)
 
 **R2** — A disconnect during an in-progress run retains the player.
 - AC: `RoomManager.markDisconnected(code, playerId)` on an **in-progress** room keeps the player

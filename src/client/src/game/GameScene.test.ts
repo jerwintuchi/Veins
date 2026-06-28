@@ -78,6 +78,7 @@ vi.mock('phaser', () => {
 });
 
 import { GameScene } from './GameScene.js';
+import { sceneStore } from './SceneStore.js';
 import { DESIGN_VIEW_HEIGHT } from '@veins/shared';
 
 // Build a GameScene that bypasses socket event binding.
@@ -150,6 +151,22 @@ describe('GameScene dynamic zoom (T4, R1)', () => {
 });
 
 describe('GameScene player sprites (T4, R3, R4)', () => {
+  // Regression: aim must be accurate before the first PLAYER_MOVED — the local
+  // spawn seeds sceneStore.localPlayerPos so mouse-aim doesn't use the off-centre
+  // screen fallback.
+  it('seeds sceneStore.localPlayerPos on local spawn', () => {
+    const scene = makeScene();
+    scene.addOrUpdatePlayer('me', 50, 60, true);
+    expect(sceneStore.localPlayerPos).toEqual({ x: 50, y: 60 });
+  });
+
+  it('does NOT set localPlayerPos for a remote spawn', () => {
+    sceneStore.localPlayerPos = null;
+    const scene = makeScene();
+    scene.addOrUpdatePlayer('other', 70, 80, false);
+    expect(sceneStore.localPlayerPos).toBeNull();
+  });
+
   it('PLAYER_MOVED updates the interpolation target (arc lerps toward it on update)', () => {
     const scene = makeScene();
     scene.addOrUpdatePlayer('p1', 0, 0, true);
@@ -291,6 +308,36 @@ describe('GameScene auto-aim ring (T7, R9)', () => {
     const { aimRing } = scene as unknown as { aimRing: ReturnType<typeof makeGraphics> };
     expect(aimRing.setVisible).toHaveBeenCalledWith(false);
   });
+
+  // Regression (B1): the ring follows its target as the enemy moves.
+  it('update() re-pins the ring to the target enemy as it moves', () => {
+    const scene = makeScene();
+    scene.spawnEnemy('target', 100, 100, 60);
+    scene.showAimRing('target');
+    scene.moveEnemy('target', 100, 300);
+    (scene as unknown as { update: (t: number, d: number) => void }).update(0, 10_000); // snap
+    const { aimRing } = scene as unknown as { aimRing: ReturnType<typeof makeGraphics> };
+    expect(aimRing.visible).toBe(true);
+    expect(aimRing.y).toBeCloseTo(300, 0);
+  });
+
+  // Regression (B2): an unrelated enemy dying must not drop a live aim lock.
+  it('keeps the ring locked when a DIFFERENT enemy dies, hides it only when the target dies', () => {
+    const scene = makeScene();
+    scene.spawnEnemy('target', 100, 100, 60);
+    scene.spawnEnemy('other', 300, 300, 60);
+    scene.showAimRing('target');
+    const update = (scene as unknown as { update: (t: number, d: number) => void }).update.bind(scene);
+    const { aimRing } = scene as unknown as { aimRing: ReturnType<typeof makeGraphics> };
+
+    scene.killEnemy('other');
+    update(0, 16);
+    expect(aimRing.visible).toBe(true); // still locked on 'target'
+
+    scene.killEnemy('target');
+    update(0, 16);
+    expect(aimRing.visible).toBe(false); // target gone → ring hides
+  });
 });
 
 describe('GameScene camera (T6, R7)', () => {
@@ -299,6 +346,18 @@ describe('GameScene camera (T6, R7)', () => {
     drawDungeon(scene, DUNGEON_3R2C);
     const cam = (scene as unknown as { cameras: { main: { setBounds: ReturnType<typeof vi.fn> } } }).cameras.main;
     expect(cam.setBounds).toHaveBeenCalledWith(0, 0, DUNGEON_3R2C.width, DUNGEON_3R2C.height);
+  });
+
+  // Regression (desktop aim offset): create() must expose the camera to sceneStore
+  // synchronously. The previous code did this in a Scenes.Events.READY listener,
+  // but READY fires BEFORE create() runs, so the listener never fired and
+  // sceneStore.camera stayed null — forcing mouse-aim onto the off-centre screen
+  // fallback. App's emitAim needs this camera to convert the cursor to world coords.
+  it('exposes cameras.main on sceneStore after create (not via a READY listener)', () => {
+    sceneStore.camera = null;
+    const scene = makeScene();
+    const cam = (scene as unknown as { cameras: { main: unknown } }).cameras.main;
+    expect(sceneStore.camera).toBe(cam);
   });
 });
 
@@ -409,7 +468,7 @@ describe('GameScene RUN_STARTED handler', () => {
     socket.handlers.get('RUN_STARTED')!({
       dungeon: MINIMAL_DUNGEON,
       playerPositions: { p1: { x: 100, y: 100 } },
-      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPool: [],
+      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPools: {},
     });
     const gfx = (scene as unknown as { dungeonGraphics: ReturnType<typeof makeGraphics> }).dungeonGraphics;
     expect(gfx.fillRect).toHaveBeenCalledTimes(1);
@@ -421,7 +480,7 @@ describe('GameScene RUN_STARTED handler', () => {
     socket.handlers.get('RUN_STARTED')!({
       dungeon: MINIMAL_DUNGEON,
       playerPositions: { p1: { x: 10, y: 20 }, p2: { x: 30, y: 40 } },
-      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPool: [],
+      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPools: {},
     });
     const { players } = scene as unknown as { players: Map<string, { arc: ReturnType<typeof makeArc>; isLocal: boolean }> };
     expect(players.size).toBe(2);
@@ -435,7 +494,7 @@ describe('GameScene RUN_STARTED handler', () => {
     socket.handlers.get('RUN_STARTED')!({
       dungeon: MINIMAL_DUNGEON,
       playerPositions: { p1: { x: 10, y: 20 } },
-      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPool: [],
+      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPools: {},
     });
     const cam = (scene as unknown as { cameras: { main: { startFollow: ReturnType<typeof vi.fn> } } }).cameras.main;
     expect(cam.startFollow).toHaveBeenCalled();
@@ -448,9 +507,54 @@ describe('GameScene RUN_STARTED handler', () => {
     socket.handlers.get('RUN_STARTED')!({
       dungeon: MINIMAL_DUNGEON,
       playerPositions: { p2: { x: 30, y: 40 } },
-      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPool: [],
+      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPools: {},
     });
     const cam = (scene as unknown as { cameras: { main: { startFollow: ReturnType<typeof vi.fn> } } }).cameras.main;
     expect(cam.startFollow).not.toHaveBeenCalled();
+  });
+});
+
+describe('GameScene FLOOR_ADVANCED handler', () => {
+  const NEXT_DUNGEON = {
+    runId: 'r', width: 400, height: 400,
+    rooms: [{ id: 'r0', rect: { x: 0, y: 0, width: 400, height: 400 } }],
+    corridors: [],
+  };
+
+  it('snaps players to the entry positions carried by the event (no lerp slide)', () => {
+    const socket = makeSocket();
+    const scene = makeSceneWithSocket(socket, 'p1');
+    socket.handlers.get('RUN_STARTED')!({
+      dungeon: MINIMAL_DUNGEON,
+      playerPositions: { p1: { x: 10, y: 20 }, p2: { x: 30, y: 40 } },
+      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPools: {},
+    });
+
+    socket.handlers.get('FLOOR_ADVANCED')!({
+      floor: 2,
+      dungeon: NEXT_DUNGEON,
+      playerPositions: { p1: { x: 200, y: 200 }, p2: { x: 200, y: 200 } },
+    });
+
+    const { players } = scene as unknown as { players: Map<string, { arc: { x: number; y: number } }> };
+    // Sprite is snapped immediately (not just the lerp target), so it renders at
+    // the entry on the very first frame of the new floor.
+    expect(players.get('p1')!.arc.x).toBe(200);
+    expect(players.get('p1')!.arc.y).toBe(200);
+    expect(players.get('p2')!.arc.x).toBe(200);
+    expect(players.get('p2')!.arc.y).toBe(200);
+  });
+
+  it('does not throw when the event carries no playerPositions (back-compat)', () => {
+    const socket = makeSocket();
+    const scene = makeSceneWithSocket(socket, 'p1');
+    socket.handlers.get('RUN_STARTED')!({
+      dungeon: MINIMAL_DUNGEON,
+      playerPositions: { p1: { x: 10, y: 20 } },
+      board: { slots: {} }, synergyMap: {}, relicRegistry: {}, lootPools: {},
+    });
+    expect(() =>
+      socket.handlers.get('FLOOR_ADVANCED')!({ floor: 2, dungeon: NEXT_DUNGEON })
+    ).not.toThrow();
   });
 });

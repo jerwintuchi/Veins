@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { generateDungeon } from '../dungeon/bsp.js';
 import { RoomManager } from './manager.js';
 
@@ -371,22 +371,119 @@ describe('RoomManager — Bleed Clock integration', () => {
     expect(r.fireDurations.size).toBe(0);
   });
 
-  // T2 (loot spec) — R2: createRoom initialises lootPool to []
-  it('lootPool is [] immediately after createRoom (T2-loot, R2)', () => {
+  // T2 (loot spec) — R2: createRoom initialises lootPools to {}
+  it('lootPools is {} immediately after createRoom (T2-loot, R2)', () => {
     const mgr = new RoomManager({ generateCode: seqCodes() });
     const { room } = mgr.createRoom('h1');
-    expect(room.lootPool).toEqual([]);
+    expect(room.lootPools).toEqual({});
   });
 
-  // T2 (loot spec) — R2: startRun begins in combat phase; lootPool is empty at start
-  // and gets populated by the server when all enemies die (phaseChanged → PHASE_CHANGED event).
-  it('lootPool is empty at startRun (combat-first flow) (T2-loot, R2)', async () => {
+  // T2 (loot spec) — R2: startRun begins in combat phase; lootPools are empty at start
+  // and get populated per-player when all enemies die (phaseChanged → PHASE_CHANGED event).
+  it('lootPools are empty at startRun (combat-first flow) (T2-loot, R2)', async () => {
     const mgr = new RoomManager({ generateCode: seqCodes(), generateRunId: () => 'run-loot' });
     const { room } = mgr.createRoom('h1');
     mgr.joinRoom(room.code, 'p2');
     mgr.startRun(room.code);
     const r = mgr.getRoom(room.code)!;
     expect(r.phase).toBe('combat');
-    expect(r.lootPool).toEqual([]);
+    expect(r.lootPools).toEqual({});
+  });
+});
+
+describe('test arena env toggle (VEINS_TEST_ARENA)', () => {
+  afterEach(() => { delete process.env['VEINS_TEST_ARENA']; });
+
+  it('OFF by default: startRun builds a normal multi-room dungeon (production unaffected)', () => {
+    delete process.env['VEINS_TEST_ARENA'];
+    const mgr = new RoomManager({ generateCode: seqCodes(), generateRunId: () => 'run-real' });
+    const { room } = mgr.createRoom('h1');
+    mgr.joinRoom(room.code, 'p2');
+    const res = mgr.startRun(room.code);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    // A standard BSP dungeon has multiple rooms; the arena has exactly one.
+    expect(res.dungeon.rooms.length).toBeGreaterThan(1);
+  });
+
+  it('ON: startRun builds a single-room arena with one enemy per type', () => {
+    process.env['VEINS_TEST_ARENA'] = '1';
+    const mgr = new RoomManager({ generateCode: seqCodes(), generateRunId: () => 'run-arena' });
+    const { room } = mgr.createRoom('h1');
+    mgr.joinRoom(room.code, 'p2');
+    const res = mgr.startRun(room.code);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.dungeon.rooms).toHaveLength(1);
+    expect(res.dungeon.corridors).toHaveLength(0);
+    const r = mgr.getRoom(room.code)!;
+    const types = [...r.enemies.values()].map(e => e.typeId).sort();
+    expect(types).toEqual(['shambler', 'spitter']);
+  });
+
+  it('ON: descend keeps the arena (single room, one enemy per type)', () => {
+    process.env['VEINS_TEST_ARENA'] = '1';
+    const mgr = new RoomManager({ generateCode: seqCodes(), generateRunId: () => 'run-arena2' });
+    const { room } = mgr.createRoom('h1');
+    mgr.startRun(room.code);
+    const advanced = mgr.descendRoom(room.code);
+    expect(advanced.ok).toBe(true);
+    if (!advanced.ok) return;
+    expect(advanced.event.dungeon.rooms).toHaveLength(1);
+    const r = mgr.getRoom(room.code)!;
+    expect([...r.enemies.values()].map(e => e.typeId).sort()).toEqual(['shambler', 'spitter']);
+  });
+});
+
+describe('descend repositions players to the new floor entry (regression)', () => {
+  afterEach(() => { delete process.env['VEINS_TEST_ARENA']; });
+
+  it('moves every player to the new floor entry-room centre, carrying HP', () => {
+    const mgr = new RoomManager({ generateCode: seqCodes(), generateRunId: () => 'run-pos' });
+    const { room } = mgr.createRoom('h1');
+    mgr.joinRoom(room.code, 'p2');
+    mgr.startRun(room.code);
+    const r = mgr.getRoom(room.code)!;
+    // Simulate players having wandered off and taken damage on floor 1.
+    for (const [id, ps] of r.playerStates) r.playerStates.set(id, { ...ps, x: 9999, y: 9999, hp: 40 });
+
+    const advanced = mgr.descendRoom(room.code);
+    expect(advanced.ok).toBe(true);
+    if (!advanced.ok) return;
+
+    const entry = r.dungeon!.rooms[0]!.rect;
+    const ex = entry.x + entry.width / 2;
+    const ey = entry.y + entry.height / 2;
+    for (const ps of r.playerStates.values()) {
+      expect(ps.x).toBe(ex);
+      expect(ps.y).toBe(ey);
+      expect(ps.hp).toBe(40); // HP carries over; only position is reset
+    }
+    // The new positions ride the FLOOR_ADVANCED payload so the client can snap.
+    expect(advanced.event.playerPositions!['h1']).toEqual({ x: ex, y: ey });
+    expect(advanced.event.playerPositions!['p2']).toEqual({ x: ex, y: ey });
+  });
+
+  it('in the arena, players land at the arena centre, away from the enemy spawns', () => {
+    process.env['VEINS_TEST_ARENA'] = '1';
+    const mgr = new RoomManager({ generateCode: seqCodes(), generateRunId: () => 'run-pos2' });
+    const { room } = mgr.createRoom('h1');
+    mgr.startRun(room.code);
+    const r = mgr.getRoom(room.code)!;
+    const advanced = mgr.descendRoom(room.code);
+    expect(advanced.ok).toBe(true);
+    if (!advanced.ok) return;
+
+    const entry = advanced.event.dungeon.rooms[0]!.rect;
+    const cx = entry.x + entry.width / 2;
+    const cy = entry.y + entry.height / 2;
+    const player = r.playerStates.get('h1')!;
+    expect(player.x).toBe(cx);
+    expect(player.y).toBe(cy);
+    // Every enemy is comfortably clear of the player's landing spot.
+    for (const e of r.enemies.values()) {
+      const dist = Math.hypot(e.x - cx, e.y - cy);
+      expect(dist).toBeGreaterThan(150); // beyond the spitter's attack range
+    }
   });
 });
