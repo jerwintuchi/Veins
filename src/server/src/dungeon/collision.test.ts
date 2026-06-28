@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { DungeonLayout, Corridor } from '@veins/shared';
-import { CORRIDOR_HALF_WIDTH } from '@veins/shared';
+import type { DungeonLayout, Corridor } from '@testament/shared';
+import { CORRIDOR_HALF_WIDTH } from '@testament/shared';
 import { isWalkable, corridorRects, clampToWalkable } from './collision.js';
 
 // Two rooms separated in both x and y, connected by an L-shaped corridor.

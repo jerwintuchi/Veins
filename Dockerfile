@@ -10,7 +10,7 @@ COPY tsconfig.base.json ./
 COPY src/shared/package.json ./src/shared/
 COPY src/server/package.json ./src/server/
 
-# Install all deps (tsx is a devDep of @veins/server; needed at runtime since we
+# Install all deps (tsx is a devDep of @testament/server; needed at runtime since we
 # skip the tsc compile step and run TypeScript directly via tsx).
 RUN pnpm install --frozen-lockfile
 
@@ -22,5 +22,5 @@ COPY src/server/tsconfig.json ./src/server/
 ENV NODE_ENV=production
 EXPOSE 3001
 
-# pnpm exec resolves tsx from @veins/server's node_modules.
-CMD ["pnpm", "--filter", "@veins/server", "run", "start"]
+# pnpm exec resolves tsx from @testament/server's node_modules.
+CMD ["pnpm", "--filter", "@testament/server", "run", "start"]

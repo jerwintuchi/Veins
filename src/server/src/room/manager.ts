@@ -1,19 +1,19 @@
 import { randomUUID } from 'node:crypto';
-import type { AimState, DungeonLayout, LobbyErrorEvent, PlayerId, RoomCode, PlayerState } from '@veins/shared';
-import { MAX_PLAYERS, MIN_PLAYERS_TO_START as GAME_MIN_PLAYERS, HEX_BOARD_RADIUS, PLAYER_MAX_HP, STARTER_RELICS } from '@veins/shared';
+import type { AimState, DungeonLayout, LobbyErrorEvent, PlayerId, RoomCode, PlayerState } from '@testament/shared';
+import { MAX_PLAYERS, MIN_PLAYERS_TO_START as GAME_MIN_PLAYERS, HEX_BOARD_RADIUS, PLAYER_MAX_HP, STARTER_RELICS } from '@testament/shared';
 
 // Solo play is supported (GAME_MIN_PLAYERS === 1). Set DEV_MIN_PLAYERS higher (e.g. 2)
 // to force co-op-only behaviour for testing.
 const MIN_PLAYERS_TO_START = parseInt(process.env['DEV_MIN_PLAYERS'] ?? String(GAME_MIN_PLAYERS), 10);
-import type { BleedClockTickEvent, RunEndedEvent, FloorAdvancedEvent } from '@veins/shared';
+import type { BleedClockTickEvent, RunEndedEvent, FloorAdvancedEvent } from '@testament/shared';
 import { generateDungeon } from '../dungeon/bsp.js';
+import { isTestArenaEnabled, generateTestArenaDungeon, spawnTestArenaEnemies } from '../dungeon/testArena.js';
 import { buildInitialBoard } from '../board/layout.js';
 import { advanceBleedForRoom, extractRun } from '../bleed/clock.js';
 import { descendFloor } from '../floor/progression.js';
 import { spawnEnemies } from '../combat/spawn.js';
 import { drainRateForFloor, type Room } from './state.js';
 import { generateRoomCode } from './roomCode.js';
-import { generateLootPool } from '../loot/pool.js';
 import { createRng, hashSeed } from '../rng/seeded.js';
 
 const DUNGEON_START_HP = 1000;
@@ -81,9 +81,11 @@ export class RoomManager {
       aimStates: new Map(),
       projectiles: new Map(),
       weaponCooldowns: new Map(),
+      playerFiring: new Map(),
       playerMoveInputs: new Map(),
       nextProjectileId: 0,
-      lootPool: [],
+      lootPools: {},
+      placedThisLootPhase: new Set(),
       fireDurations: new Map(),
       combatRng: createRng(0),
       disconnectedPlayers: new Set(),
@@ -186,7 +188,8 @@ export class RoomManager {
     }
 
     const runId = this.generateRunId();
-    const dungeon = generateDungeon(runId);
+    // Test arena (VEINS_TEST_ARENA=1): single room, fast loot. Off → real dungeon.
+    const dungeon = isTestArenaEnabled() ? generateTestArenaDungeon(runId) : generateDungeon(runId);
 
     room.runId = runId;
     room.status = 'in-progress';
@@ -215,14 +218,21 @@ export class RoomManager {
     // move inputs start at rest (R3).
     room.projectiles      = new Map();
     room.weaponCooldowns  = new Map(room.players.map(id => [id, 0]));
+    // Default firing = true (auto-fire); desktop clients opt out via `set-firing`.
+    room.playerFiring     = new Map(room.players.map(id => [id, true]));
     room.playerMoveInputs = new Map(room.players.map(id => [id, { dx: 0, dy: 0 }]));
     room.nextProjectileId = 0;
     // Populate the relic registry with the starter set.
     room.registry = new Map(STARTER_RELICS.map(r => [r.id, r]));
     // Spawn floor-1 enemies immediately — run starts in combat, not loot.
-    room.enemies = spawnEnemies(runId, 1, dungeon);
-    // Loot pool is empty until enemies are cleared; filled on phase transition to loot.
-    room.lootPool = [];
+    // Test arena spawns exactly one of each enemy type for a quick clear.
+    room.enemies = isTestArenaEnabled()
+      ? spawnTestArenaEnemies(1, dungeon)
+      : spawnEnemies(runId, 1, dungeon);
+    // Loot pools are empty until enemies are cleared; filled per-player on phase
+    // transition to loot.
+    room.lootPools = {};
+    room.placedThisLootPhase = new Set();
     // Combat RNG seeded from runId; advances across floors (not reset on descend).
     room.combatRng = createRng(hashSeed(`${runId}#combat`));
     room.enemiesKilled = 0;
@@ -270,8 +280,34 @@ export class RoomManager {
     if (!res.ok) return { ok: false };
     // Fire DoT does not persist across floor boundaries.
     room.fireDurations = new Map();
-    // Spawn enemies for the new floor (deterministic from runId + floor).
-    room.enemies = spawnEnemies(room.runId, room.floor, res.event.dungeon);
+    // Test arena: keep every floor a single room with one enemy per type. Overrides
+    // the dungeon descendFloor just generated (and the FLOOR_ADVANCED payload) so the
+    // client renders the arena, not a real dungeon.
+    if (isTestArenaEnabled()) {
+      const arena = generateTestArenaDungeon(room.runId);
+      room.dungeon = arena;
+      res.event.dungeon = arena;
+      room.enemies = spawnTestArenaEnemies(room.floor, arena);
+    } else {
+      // Spawn enemies for the new floor (deterministic from runId + floor).
+      room.enemies = spawnEnemies(room.runId, room.floor, res.event.dungeon);
+    }
+    // Reposition every player to the new floor's entry room (room-0 centre), exactly
+    // as startRun does for floor 1. Without this, players descend "in place" — on a
+    // new dungeon that can put them inside a wall, and in the arena right on top of a
+    // fresh enemy spawn, where the enemy sprite renders behind the player (looks like
+    // "no enemies") while dealing immediate damage. HP/downed state carry over.
+    const entry = room.dungeon?.rooms[0];
+    if (entry) {
+      const ex = entry.rect.x + entry.rect.width / 2;
+      const ey = entry.rect.y + entry.rect.height / 2;
+      for (const [id, ps] of room.playerStates) {
+        room.playerStates.set(id, { ...ps, x: ex, y: ey });
+      }
+      res.event.playerPositions = Object.fromEntries(
+        [...room.playerStates].map(([id, ps]) => [id, { x: ps.x, y: ps.y }])
+      );
+    }
     // If the dungeon somehow has no non-entry rooms (degenerate case), skip straight
     // to loot phase — combat with zero enemies would flip phase on the first tick
     // anyway, but doing it here avoids a spurious PHASE_CHANGED event.

@@ -17,7 +17,7 @@ import {
   VOTIVE_SYNERGY_REDUCTION,
 } from './effects.js';
 import { createRng } from '../rng/seeded.js';
-import type { RelicBoard, SynergyMap } from '@veins/shared';
+import type { RelicBoard, SynergyMap } from '@testament/shared';
 import type { EnemyState } from '../combat/types.js';
 
 const PROJ_DMG = 10;

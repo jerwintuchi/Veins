@@ -1,54 +1,116 @@
 # Glossary — Canonical Terms
 
-Use these terms exactly as written in specs, code, and conversation. Consistency prevents drift.
+Use these terms exactly as written in the bible, in specs, in code, and in
+conversation. Consistency prevents drift.
 
 ---
 
-**Bleed Clock**
-The dungeon's global HP bar. Drains in real time; drain rate multiplies with floor depth. Hitting zero ends the run. Creates the "extract or descend?" group tension. Implemented server-side; broadcast to all clients as a delta event.
+**The Collegium**
+The order the players belong to: hunter-scholars who study and confront
+Manifestations. The institutional frame for contracts, ranks, and the Archive.
 
-**Circulatory Board**
-The shared hexagonal relic board owned by the entire party (not individual players). Relics only fire their synergy (strongest) effect when adjacent to a compatible relic owned by a *different* player. The central mechanic of Veins.
+**Hunter-Scholar**
+A player character. Not a hero and not a class. A field investigator who survives
+by understanding. Roles emerge from the loadout, not from a class pick.
 
-**Linked Fates**
-The revive mechanic. Reviving a downed teammate costs the reviver one relic from their board slots, which transfers into the downed player's slot. Death reshapes the party build mid-fight.
+**Choir**
+A historical generation of hunters, a lineage within the Collegium. Choirs are
+*heritage and flavor*, not playable classes. (Heir to the prototype's rejection of
+class selection.)
 
-**Relic**
-An item placed on the Circulatory Board. Has: a base effect (always active), a synergy effect (fires only when adjacency conditions are met), and one or more tags (e.g., `fire`, `aoe`, `party`, `poison`).
+**Manifestation**
+An unconfirmed hostile phenomenon in the field. The general term for enemies before
+the Collegium has verified what they are.
 
-**Relic Slot**
-A single hex cell on the Circulatory Board. Has a coordinate (HexCoord), an owner (PlayerId), and optionally a placed Relic. Ownership determines whose player border is rendered; synergy ignores ownership except to require *different* owners.
+**Incarnate**
+A confirmed, named entity that an expedition is sent to study or confront. Each
+Incarnate has a hidden **Trait Roll** and may carry a **Mutation** stack. Understood
+through interpretation, never memorization.
 
-**Synergy**
-The bonus effect a relic gains when it is adjacent to another relic (owned by a different player) that shares at least one tag. Evaluated server-side only. Pure function of board state.
-*Solo exception:* on a single-owner board (a solo run), the different-player requirement is relaxed — adjacent same-tag relics synergize regardless of owner — so the board still functions for one player. Co-op (two or more owners) is unchanged. See specs/solo-play.
+**Trait Roll**
+The hidden, server-only set of an Incarnate's properties for one expedition
+(nature, resistances, tendencies, ailments). Re-rolled every expedition. Never sent
+to the client; only its **Signs** are.
 
-**HexCoord**
-Axial coordinate pair `{ q: number, r: number }` used to address cells on the Circulatory Board. Six neighbors at offsets `(±1, 0)`, `(0, ±1)`, `(+1, −1)`, `(−1, +1)`.
+**Mutation**
+A modifier stacked onto an Incarnate that changes or masks its traits, keeping even
+a familiar Incarnate a fresh diagnosis.
 
-**Run**
-One full dungeon session from start to extraction or death. Identified by a `runId` (UUID). The `runId` seeds all procedural generation for that session.
+**Sign**
+An observable, consistent manifestation of a hidden trait (a mark, a sound, a
+behavior, a reaction). The same sign always means the same thing; which Incarnate
+carries it varies. Signs are the only Incarnate information the client ever receives.
 
-**Room**
-An in-memory server object containing 2–4 players, the current run state, and the Circulatory Board. Rooms are ephemeral — never persisted to the database.
+**Sign Language**
+The stable vocabulary that maps signs to meanings. It is game-truth, learned as
+player skill, never shown as a label or a percentage and never persisted as an
+unlock. Mastery of the sign language *is* progression (Pillar 2).
 
-**Meta-progression**
-Cross-run persistent data: unlocked relics, cosmetics, achievement flags. Stored in Supabase. The only data that hits the database.
+**Probe**
+An active investigation action: present a relic, ring a bell, expose the Incarnate
+to a stimulus, and read the reaction. Costs bag space and exposure.
+
+**Distributed Perception**
+The forced-cooperation engine: party members perceive different sign-channels, so
+the theory can only be assembled by talking. Solo relaxes the distribution.
+
+**Contract**
+A procedural mission assembled from orthogonal axes: Target, Site, Condition,
+Primary Verb, Secondary Objective, and Clause. Its intel is partial and may be wrong.
+
+**Primary Verb**
+The contract's main objective. Not always *kill*: capture alive, observe-and-survive,
+banish by rite, or drive off.
+
+**Secondary Objective**
+A complication layered onto a contract (escort, rescue, retrieve, interact, defend).
+Must always be a lever on the central hunt, never a chore beside it.
+
+**Clause**
+A Collegium-imposed restriction on a contract (bring it back intact, no fire on
+consecrated ground, the reliquary must not break).
+
+**Loadout / Bag Economy**
+The shared kit the party prepares. Limited bag space forces a tradeoff between
+combat capability and probing/ritual gear, which is how preparation and role
+distribution become the same decision.
+
+**Surety**
+The stake placed when a contract is accepted. Makes acceptance a real decision and
+gives preparation teeth.
+
+**Recant**
+Abandoning an accepted contract. Allowed, but it forfeits the Surety and costs some
+Collegium standing. There is no death-lock.
+
+**Expedition**
+One full deployment against a contract, from Deploy to Extraction (or failure).
+
+**Extraction**
+Leaving the site with what you learned and what you carry.
+
+**The Archive**
+The party's shared, **session-scoped** notebook of confirmed Incarnate traits for
+the current run of expeditions. Ephemeral: it resets with a new session.
+
+**Field Testament**
+The record an expedition produces, win or lose. Failure still writes one; partial
+knowledge enters the Archive. The namesake of the game (Pillar 5).
+
+**Collegium Rank**
+A persistent measure of standing that gates access to higher-tier contracts and
+prestige. It grants *access and options*, not raw combat power.
+
+**Site / Condition**
+The Site is the biome an expedition takes place in (route topology + modifiers). The
+Condition is the weather, time, and sacred-decay state layered on top.
 
 **Trust Boundary**
-The architectural line between `src/server/` (authoritative, trusted) and `src/client/` (untrusted). No game state originates from the client side of this boundary. `src/shared/` sits on the line — types and constants only.
+The architectural line between `src/server/` (authoritative, trusted) and the Godot
+client (untrusted). No game state originates on the client side. `src/shared/` sits
+on the line as the wire-protocol contract: types and constants only.
 
 **Delta Event**
-A Socket.io event emitted by the server describing a *change* to game state (e.g., `RELIC_PLACED`, `BLEED_CLOCK_TICK`). Clients apply deltas to their local render state. Clients never compute state; they only render what the server tells them.
-
-**Auto-Aim**
-The default targeting behavior on mobile. When the aim joystick is at rest, the game automatically selects a target enemy using the priority rule (TBD in controls spec). Fires toward that target without player input. Desktop (mouse) users are always in manual aim.
-
-**Aim Override**
-Activated when the player actively moves the aim joystick (non-zero input). Disables auto-aim for that moment and fires in the joystick direction instead. Returns to auto-aim when the stick is released. Critical for targeting specific enemies during boss fights with minions.
-
-**PWA (Progressive Web App)**
-The mechanism for hiding browser chrome on mobile. Users add the game to their home screen via browser prompt; subsequent launches open in standalone mode with no URL bar or navigation buttons — indistinguishable from a native app. Requires `manifest.json` with `"display": "standalone"` and appropriate iOS meta tags.
-
-**R# / T# (Requirement / Task)**
-Traceability IDs used in specs. R# appears in `requirements.md`. T# appears in `tasks.md` and cites the R# it implements plus the test that verifies it. Nothing is done without this chain: R# → Design → T# → Test.
+A server-to-client message describing a *change* to game state. After the initial
+sync on join, the server sends deltas only (exception: explicit resync on
+reconnection or desync recovery).

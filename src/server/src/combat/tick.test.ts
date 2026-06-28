@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { tickEnemies, applyEnemyAttacks, allEnemiesDead } from './tick.js';
-import { SHAMBLER_DEF, SPITTER_DEF, ENEMY_TYPES, PLAYER_MAX_HP } from '@veins/shared';
+import { SHAMBLER_DEF, SPITTER_DEF, ENEMY_TYPES, PLAYER_MAX_HP } from '@testament/shared';
 import type { EnemyState } from './types.js';
-import type { PlayerState, DungeonLayout } from '@veins/shared';
+import type { PlayerState, DungeonLayout } from '@testament/shared';
 
 // Large flat room — all positions within [0,512]×[0,512] are walkable so that
 // AI-behaviour tests (movement direction, attack timing) work at synthetic

@@ -12,7 +12,7 @@ import type {
   DungeonLayout,
   AimState,
   ProjectileState,
-} from '@veins/shared';
+} from '@testament/shared';
 import type { EnemyId, EnemyState } from '../combat/types.js';
 import type { Rng } from '../rng/seeded.js';
 import { createRng } from '../rng/seeded.js';
@@ -44,13 +44,22 @@ export type Room = {
   projectiles: Map<string, ProjectileState>;
   // ms remaining until each player can fire again; starts at 0 (fire immediately).
   weaponCooldowns: Map<PlayerId, number>;
+  // Whether each player is currently holding fire. Absent/true = auto-fire (mobile
+  // + default); a desktop client opts out (sets false) and drives it with the mouse
+  // button so attacks trigger on hold-left-click. Optional so lobby/test rooms omit it.
+  playerFiring?: Map<PlayerId, boolean>;
   // Latest move direction from move-player events; applied once per tick (R4).
   playerMoveInputs: Map<PlayerId, { dx: number; dy: number }>;
   // Monotonic counter for generating unique projectile IDs.
   nextProjectileId: number;
-  // Relics available to place during the current loot phase. Reset by
-  // generateLootPool on run start and each loot-phase entry.
-  lootPool: RelicId[];
+  // Per-player relics available to place during the current loot phase, keyed by
+  // PlayerId. Each player has an independent pool (one player can't consume
+  // another's). Reset by generateLootPools on run start and each loot-phase entry.
+  lootPools: Record<PlayerId, RelicId[]>;
+  // Players who have already placed their one relic in the current loot phase.
+  // A player may place at most one relic per loot phase; this set gates the second
+  // attempt and is cleared each time a new loot phase begins.
+  placedThisLootPhase: Set<PlayerId>;
   // Fire DoT remaining duration per enemy, in seconds. Cleared on floor descend.
   fireDurations: Map<EnemyId, number>;
   // Per-run seeded RNG for combat randomness (synaptic-filament chain, etc.). Advances

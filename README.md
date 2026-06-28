@@ -1,20 +1,20 @@
 <br>
 <div align="center">
 
-# 🩸 VEINS
+# Testament
 
-### *A roguelike you literally cannot beat by yourself.*
+### *A cooperative hunting RPG you win by understanding, not by memorizing.*
 
-A browser-based 2-4 player co-op action roguelike where the party shares **one** hexagonal relic board, and synergies only fire when your relic is touching a teammate's.
+You and up to three companions are **hunter-scholars of the Collegium**. You take a
+contract, form a theory about the Incarnate you are sent to study, stake your
+preparation on that theory, and find out in the field whether you read it right.
 
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
-![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
+![Godot](https://img.shields.io/badge/Godot-478CBF?style=flat&logo=godotengine&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white)
-![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=flat&logo=socketdotio&logoColor=white)
-![Phaser](https://img.shields.io/badge/Phaser-2B2D2F?style=flat&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=flat&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat&logo=supabase&logoColor=white)
 ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=flat&logo=vitest&logoColor=white)
-![pnpm](https://img.shields.io/badge/pnpm-F69220?style=flat&logo=pnpm&logoColor=white)
 
 **No installs. No app stores. Open a link and play.**
 
@@ -22,162 +22,58 @@ A browser-based 2-4 player co-op action roguelike where the party shares **one**
 
 ---
 
-## The Problem With Every Co-op Roguelike
+## The spine
 
-In Hades, you play alone. In Enter the Gungeon, two players each have their own gun. In Risk of Rain 2, items stack on *your* character; a teammate's items don't interact with yours.
+> **Observe → Hypothesize → Test → Record.**
 
-Every co-op roguelike treats the party as N solo players who happen to share a screen. The build space is additive, not combinatorial. You optimise *yourself.*
+Testament is the scientific method dressed as a gothic hunt. Each Incarnate's traits
+are hidden and re-rolled, so you can never memorize one: you read it from the *signs*
+it leaves, and the fiction agrees, because in this world no complete answer exists,
+only classification from observable facts.
 
-**Veins breaks this.**
+## The five pillars
 
----
+1. Preparation is as important as combat.
+2. Knowledge is progression.
+3. Incarnates are understood through interpretation, never memorization.
+4. Cooperation is the primary pillar (solo supported, never the center).
+5. Every expedition becomes another Testament.
 
-## The Circulatory Board
+## Lineage
 
-The party shares **one hexagonal relic board.** Each player owns slots on it, but relics only fire their strongest (synergy) effect when adjacent to a compatible relic owned by a *different* player.
+Testament is built on the technical foundations of the **Veins** prototype: an
+authoritative Node server, ephemeral in-memory rooms, a 20Hz tick, seeded procedural
+generation, and a strict client/server trust boundary. That technology is kept; the
+Veins game design is retired. The prototype's documents live in
+[docs/archive/veins/](docs/archive/veins/).
 
-```
-        [ P1: Ember Core ]
-       /    🔥  fire, aoe    \
-      /                       \
-[ P2: Thornwall ]         [ P3: Chain Bolt ]
-  🌿  poison, shield         ⚡  chain, aoe
-      \                       /
-       \                     /
-        [ P4: Void Pulse ]
-             💀  chain, party
-```
+## Design bible
 
-In the board above:
-- **Ember Core** (P1) is adjacent to **Chain Bolt** (P3): both share `aoe`, so **both synergies fire.**
-- **Thornwall** (P2) is adjacent to **Ember Core**: no shared tag, so no synergy.
-
-The build space is **combinatorial across players**, not additive per player. You're not optimising your character. You're optimising the **party organism.**
-
----
-
-## Supporting Mechanics
-
-### 🩸 Bleed Clock
-The dungeon has a global HP bar draining in real time, faster the deeper you go. Loot scales with depth.
-
-Every floor is a group negotiation: *"Do we extract now or push one more room?"* FTL-style dread, but shared and vocal. One greedy teammate can wipe the run.
-
-### 💀 Linked Fates
-Reviving a downed teammate costs **one of your own relics**, sacrificed into their board slot.
-
-Death mid-run doesn't just remove a player; it **reshapes the party build.** The board you planned ten minutes ago is gone. Adapt or die.
-
----
-
-## How a Run Feels
-
-1. **Lobby**: share a room code, 2-4 players join in browser
-2. **Descent**: seeded dungeon generated server-side; you fight, loot, place relics
-3. **Tension**: Bleed Clock ticks; deeper floors drain it faster; better loot waits below
-4. **Negotiation**: "I need a `fire` relic adjacent to my slot. Who has one?"
-5. **Crisis**: someone goes down; the reviver sacrifices a relic; the build changes
-6. **Extract or die**: post-run meta-progression updates (unlocks, relic roster)
-
-Sessions: **20-40 minutes.** Meta: **months.**
-
----
-
-## Tech Stack
-
-| Layer | Tech | Why |
-|---|---|---|
-| Renderer | Phaser.js (WebGL) | 2D top-down, runs anywhere, no install |
-| Frontend UI | React + Socket.io client | Lobby, menus, board UI |
-| Server | Node.js + Socket.io | Authoritative game state; clients render deltas only |
-| Dungeon Gen | Seeded BSP tree | < 5ms, deterministic from run ID (daily challenges + bug repro) |
-| Collision | Spatial hashing | O(1) avg vs O(n²) naive |
-| Database | Supabase | Meta-progression + auth only; rooms are ephemeral/in-memory |
-| Frontend deploy | Vercel | Free tier |
-| Server deploy | Fly.io | Free tier; stays alive on WebSockets unlike Render |
-| Tests | Vitest | Fast, native ESM, same config as Vite |
-| Packages | pnpm workspaces | `@veins/server`, `@veins/client`, `@veins/shared` |
-
-**Cost: $0 until hundreds of concurrent players.**
-
-Mobile: browser-based with auto-aim (nearest enemy) + manual override joystick. PWA support for fullscreen on iOS.
-
----
+The full design, lore, systems, and engineering docs live in
+[docs/](docs/README.md), a modular bible. Start with the
+[vision](docs/vision.md) and the [gameplay loop](docs/gameplay.md), then the
+[technical overview](docs/technical.md), the [roadmap](docs/ROADMAP.md), and the
+[decision log](docs/DECISION_LOG.md).
 
 ## Architecture
 
 ```
 src/
-├── server/    ← authoritative. All game state lives here. Never trust client input.
-├── shared/    ← types + constants only. Single source of truth for both sides.
-└── client/    ← render + UI only. Untrusted. Receives delta events and renders them.
+  server/   authoritative. All game state lives here. Never trust client input.
+  shared/   the wire-protocol contract. Types + constants only. No game logic.
+client/      Godot 4 project (render + input only; untrusted). [planned]
 ```
 
-All procedural logic (dungeon gen, synergy evaluation, loot rolls) runs server-side. Clients are thin renderers. The trust boundary lives in the folder structure.
+Transport is raw WebSocket so Godot's `WebSocketPeer` connects natively and exports
+cleanly to HTML5. The server stays the single source of truth.
 
----
-
-## 📖 Design Bible
-
-The full design, lore, systems, and engineering docs live in [`docs/`](docs/README.md) — a structured design bible built around one equation:
-
-> **Lore = Mechanics · Mechanics = Theology · Theology = Player Behavior.**
-
-Start with the [pitch](docs/pitch.md) and [vision](docs/vision.md), then browse [systems/](docs/systems/), [content/](docs/content/), and [technical/](docs/technical/). Each file states its canon/draft status and how it serves the spine.
-
-**Built to be self-sufficient for future contributors (human or AI):**
-- [OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) — the unknown / undecided / unbuilt register. **Read before guessing.**
-- [technical/code-map.md](docs/technical/code-map.md) — concept → source file → test, so you can jump from design to code.
-- [DECISION_LOG.md](docs/DECISION_LOG.md) — append-only dated build & architecture history.
-
----
-
-## Project Status
-
-> Spec-driven: every feature follows `R# -> Design -> T# -> Test -> Implementation`.
-> **628 tests passing** — 60 shared · 394 server · 174 client.
-
-**Implemented**
-- [x] **Circulatory Board** — shared hex board, cross-player synergy, server-authoritative + deterministic (pure `evaluateSynergies`)
-- [x] **Seeded dungeon generation** — BSP, < 5ms, reproducible per `runId` + floor
-- [x] **Multiplayer lobby & rooms** — crypto room codes, join/leave, host reassignment, ephemeral in-memory
-- [x] **Bleed Clock** — real-time drain, depth scaling, 4-stage escalation (enemy aggression + drain bonuses)
-- [x] **Floor progression** — `descend` / `extract`, board + clock carry-over, per-floor dungeons
-- [x] **Enemy system & combat** — AI tick, attack resolution, downed/wipe, floor-scaled spawns, elite last room
-- [x] **Weapons & projectiles** — server auto-fire, collision, relic effects (fire DoT, chain, splash, damage reduction)
-- [x] **Collision & A\* pathfinding** — wall-slide, line-of-sight shortcut, body separation
-- [x] **Relics** — 10 starter relics, seeded per-floor loot pools, in-combat effect resolution
-- [x] **Linked Fates** — relic-sacrifice revive (server logic + two-step client UI)
-- [x] **Solo play** — single-owner synergy relaxation (co-op rules unchanged)
-- [x] **Client** — Phaser 3 rendering, HUD, board UI, lobby / waiting / post-run screens
-- [x] **Mobile** — virtual joystick, auto-aim + manual override, PWA manifest
-- [x] **Doctrine tags** on relics + hidden-scoring design (`BOARD_DOCTRINE_SHIFT`, no doctrine UI)
-- [x] **Deploy config** — Fly.io (server) + Vercel (client)
-
-**Designed — not yet implemented**
-- [ ] Boss encounter — *The Pulsing Interpreter*, adapts to the party's dominant doctrine
-- [ ] Doctrine threshold effects (scoring scaffolding landed; effects partially wired)
-- [ ] Meta-progression persistence (Supabase unlocks / relic roster expansion)
-- [ ] Mutation system, additional biomes, real art pass (sprites replace primitives)
-
----
-
-## Running Locally
+## Running locally (server + shared)
 
 ```bash
 # Prerequisites: Node >= 20, pnpm >= 9
-git clone https://github.com/jerwintuchi/Veins.git
-cd Veins
 pnpm install
-
-# Run server
-pnpm dev:server
-
-# Run client (separate terminal)
-pnpm dev:client
-
-# Run all tests
-pnpm test
+pnpm dev:server     # run the authoritative server
+pnpm test           # run server + shared tests
 ```
 
 ---

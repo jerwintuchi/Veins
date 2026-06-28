@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { stepCombat } from './roomCombat.js';
-import { SHAMBLER_DEF, PLAYER_MAX_HP, STARTER_RELICS, PLAYER_RADIUS, ENEMY_RADIUS_SHAMBLER } from '@veins/shared';
-import type { PlayerState } from '@veins/shared';
+import { SHAMBLER_DEF, PLAYER_MAX_HP, STARTER_RELICS, PLAYER_RADIUS, ENEMY_RADIUS_SHAMBLER } from '@testament/shared';
+import type { PlayerState } from '@testament/shared';
 import type { EnemyState } from './types.js';
 import type { Room } from '../room/state.js';
 import { buildInitialBoard } from '../board/layout.js';
@@ -53,7 +53,8 @@ function makeRoom(overrides: Partial<Room> = {}): Room {
     weaponCooldowns: new Map(),
     playerMoveInputs: new Map(),
     nextProjectileId: 0,
-    lootPool: [],
+    lootPools: {},
+    placedThisLootPhase: new Set(),
     fireDurations: new Map(),
     combatRng: createRng(hashSeed('run-1#combat')),
     ...overrides,

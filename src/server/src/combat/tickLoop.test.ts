@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { runCombatTick, registerHandlers, type ServerSocket, type SocketIOServerLike } from '../index.js';
 import { RoomManager } from '../room/manager.js';
-import { SHAMBLER_DEF, PLAYER_MAX_HP, PROJECTILE_MAX_RANGE } from '@veins/shared';
+import { SHAMBLER_DEF, PLAYER_MAX_HP, PROJECTILE_MAX_RANGE } from '@testament/shared';
 import type { EnemyState } from './types.js';
-import type { PlayerState } from '@veins/shared';
+import type { PlayerState } from '@testament/shared';
 
 function makeFakeIo() {
   const roomEmits: Array<{ room: string; event: string; payload: unknown }> = [];
@@ -235,20 +235,20 @@ describe('move-player handler (T4-weapon, R4, P2)', () => {
     expect((err!.payload as { code: string }).code).toBe('INVALID_REQUEST');
   });
 
-  it('emits LOBBY_ERROR when socket is not in a room', () => {
+  it('silently ignores move-player when not in a room (no LOBBY_ERROR — per-frame input)', () => {
     const { io, connect } = makeFakeIo();
     registerHandlers(io, new RoomManager());
     const sock = makeFakeSocket('loner');
     connect()!(sock);
     sock.handlers.get('move-player')!({ dx: 1, dy: 0 });
-    const err = sock.emits.find(e => e.event === 'LOBBY_ERROR');
-    expect(err).toBeDefined();
+    expect(sock.emits.find(e => e.event === 'LOBBY_ERROR')).toBeUndefined();
   });
 });
 
 describe('revive phase guard (T12, R11, P6)', () => {
-  it('emits LOBBY_ERROR with WRONG_PHASE when reviving in loot phase', () => {
-    const { io, connect } = makeFakeIo();
+  // DECISION_LOG 2026-06-28: revive is allowed in loot (regroup), not just combat.
+  it('allows a valid revive during loot phase and brings the teammate back', () => {
+    const { io, roomEmits, connect } = makeFakeIo();
     const manager = new RoomManager({ generateCode: () => 'RVP1', generateRunId: () => 'run-rvp1' });
     registerHandlers(io, manager);
 
@@ -259,13 +259,43 @@ describe('revive phase guard (T12, R11, P6)', () => {
     connect()!(p2);
     p2.handlers.get('join-room')!({ code: 'RVP1' });
     host.handlers.get('start-run')!(undefined);
-    // Force loot phase — run now starts in combat, but revive guard applies to loot phase.
+
     const room = manager.getRoom('RVP1')!;
     room.phase = 'loot';
     room.enemies = new Map();
+    // h1 owns a slot holding a relic to sacrifice; p2 owns an empty target slot.
+    const relicId = [...room.registry.keys()][0]!;
+    const hostSlot = Object.values(room.board.slots).find(s => s.ownerId === 'h1')!;
+    room.board.slots[`${hostSlot.coord.q},${hostSlot.coord.r}`] = { ...hostSlot, relicId };
+    const p2Slot = Object.values(room.board.slots).find(s => s.ownerId === 'p2' && s.relicId === null)!;
+    room.playerStates.set('p2', { ...room.playerStates.get('p2')!, downed: true, hp: 0 });
+
+    host.handlers.get('revive')!({ sourceCoord: hostSlot.coord, targetCoord: p2Slot.coord });
+
+    expect(host.emits.find(e => e.event === 'LINKED_FATES_ERROR')).toBeUndefined();
+    expect(roomEmits.find(e => e.event === 'PLAYER_REVIVED')).toBeDefined();
+    expect(room.playerStates.get('p2')!.downed).toBe(false);
+  });
+
+  it('emits LINKED_FATES_ERROR with WRONG_PHASE when reviving outside combat/loot (transition)', () => {
+    const { io, connect } = makeFakeIo();
+    const manager = new RoomManager({ generateCode: () => 'RVP3', generateRunId: () => 'run-rvp3' });
+    registerHandlers(io, manager);
+
+    const host = makeFakeSocket('h1');
+    connect()!(host);
+    host.handlers.get('create-room')!(undefined);
+    const p2 = makeFakeSocket('p2');
+    connect()!(p2);
+    p2.handlers.get('join-room')!({ code: 'RVP3' });
+    host.handlers.get('start-run')!(undefined);
+    const room = manager.getRoom('RVP3')!;
+    room.phase = 'transition';
 
     host.handlers.get('revive')!({ sourceCoord: { q: 0, r: 0 }, targetCoord: { q: 1, r: 0 } });
-    const err = host.emits.find(e => e.event === 'LOBBY_ERROR');
+    // Visible in the revive panel (LINKED_FATES_ERROR), not a swallowed LOBBY_ERROR.
+    expect(host.emits.find(e => e.event === 'LOBBY_ERROR')).toBeUndefined();
+    const err = host.emits.find(e => e.event === 'LINKED_FATES_ERROR');
     expect(err).toBeDefined();
     expect((err!.payload as { code: string }).code).toBe('WRONG_PHASE');
   });
@@ -381,14 +411,13 @@ describe('aim-player handler (T5, R6, R7)', () => {
     expect((err!.payload as { code: string }).code).toBe('INVALID_REQUEST');
   });
 
-  it('emits LOBBY_ERROR when socket is not in a room', () => {
+  it('silently ignores aim-player when not in a room (no LOBBY_ERROR — per-frame input)', () => {
     const { io, connect } = makeFakeIo();
     registerHandlers(io, new RoomManager());
     const sock = makeFakeSocket('loner');
     connect()!(sock);
     sock.handlers.get('aim-player')!({ dx: 1, dy: 0 });
-    const err = sock.emits.find(e => e.event === 'LOBBY_ERROR');
-    expect(err).toBeDefined();
+    expect(sock.emits.find(e => e.event === 'LOBBY_ERROR')).toBeUndefined();
   });
 
   it('does not re-emit PLAYER_AIM_CHANGED when aim state is unchanged (manual)', () => {
@@ -398,6 +427,36 @@ describe('aim-player handler (T5, R6, R7)', () => {
     host.handlers.get('aim-player')!({ dx: 1, dy: 0 }); // same normalized value
     const evs = roomEmits.filter(e => e.event === 'PLAYER_AIM_CHANGED');
     expect(evs).toHaveLength(0);
+  });
+});
+
+// --- Hold-to-fire intent (desktop) ---
+
+describe('set-firing handler', () => {
+  it('sets the player firing flag false (opt out) then true (held)', () => {
+    const { host, manager } = setupRoom('FIRE1', 'run-fire1');
+    const room = manager.getRoom('FIRE1')!;
+    host.handlers.get('set-firing')!({ firing: false });
+    expect(room.playerFiring!.get('h1')).toBe(false);
+    host.handlers.get('set-firing')!({ firing: true });
+    expect(room.playerFiring!.get('h1')).toBe(true);
+  });
+
+  it('ignores a malformed payload (no throw, flag unchanged)', () => {
+    const { host, manager } = setupRoom('FIRE2', 'run-fire2');
+    const room = manager.getRoom('FIRE2')!;
+    host.handlers.get('set-firing')!({ firing: false });
+    host.handlers.get('set-firing')!({ firing: 'yes' }); // malformed
+    expect(room.playerFiring!.get('h1')).toBe(false); // unchanged
+  });
+
+  it('silently ignores set-firing when not in a room', () => {
+    const { io, connect } = makeFakeIo();
+    registerHandlers(io, new RoomManager());
+    const sock = makeFakeSocket('loner');
+    connect()!(sock);
+    sock.handlers.get('set-firing')!({ firing: true });
+    expect(sock.emits.find(e => e.event === 'LOBBY_ERROR')).toBeUndefined();
   });
 });
 
@@ -515,6 +574,18 @@ describe('weapon auto-fire integration (T5, R5, R7)', () => {
     runCombatTick(io, manager, 0);
     expect(roomEmits.some(e => e.event === 'ENEMY_DAMAGED')).toBe(true);
     expect(roomEmits.some(e => e.event === 'PROJECTILE_REMOVED' && (e.payload as { reason: string }).reason === 'hit')).toBe(true);
+  });
+
+  it('removes a killed enemy from room.enemies after ENEMY_DIED is emitted (corpses not retained)', () => {
+    const { manager, code, room } = setupWeaponRoom('WF2b');
+    const { io, roomEmits } = makeFakeIo();
+    // 1-hp enemy + adjacent projectile → dies this tick.
+    room.enemies.set('e1', { id: 'e1', typeId: 'shambler', x: 5, y: 0, hp: 1, maxHp: 60, damage: 15, alive: true, attackCooldownRemaining: 999 });
+    room.projectiles.set('p0', { id: 'p0', ownerId: 'h1', x: 0, y: 0, dx: 1, dy: 0, distanceTravelled: 0 });
+    runCombatTick(io, manager, 0);
+    expect(roomEmits.some(e => e.event === 'ENEMY_DIED' && (e.payload as { enemyId: string }).enemyId === 'e1')).toBe(true);
+    // The corpse must not linger in room state (perf + no invisible-body separation).
+    expect(room.enemies.has('e1')).toBe(false);
   });
 
   it('emits PROJECTILE_REMOVED (range) when projectile exceeds MAX_RANGE', () => {

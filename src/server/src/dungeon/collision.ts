@@ -1,5 +1,5 @@
-import type { DungeonLayout, Corridor } from '@veins/shared';
-import { CORRIDOR_HALF_WIDTH } from '@veins/shared';
+import type { DungeonLayout, Corridor } from '@testament/shared';
+import { CORRIDOR_HALF_WIDTH } from '@testament/shared';
 
 type Rect = { x: number; y: number; width: number; height: number };
 

@@ -1,5 +1,5 @@
-import type { DungeonLayout } from '@veins/shared';
-import { ENEMY_TYPES } from '@veins/shared';
+import type { DungeonLayout } from '@testament/shared';
+import { ENEMY_TYPES } from '@testament/shared';
 import { hashSeed, createRng, type Rng } from '../rng/seeded.js';
 import type { EnemyId, EnemyState } from './types.js';
 

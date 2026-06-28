@@ -1,11 +1,11 @@
-import type { DungeonLayout, PlayerId } from '@veins/shared';
-import type { PlayerState } from '@veins/shared';
+import type { DungeonLayout, PlayerId } from '@testament/shared';
+import type { PlayerState } from '@testament/shared';
 import {
   PLAYER_RADIUS,
   ENEMY_RADIUS_SHAMBLER,
   ENEMY_RADIUS_SPITTER,
   type EnemyTypeId,
-} from '@veins/shared';
+} from '@testament/shared';
 import type { EnemyId, EnemyState } from './types.js';
 import { clampToWalkable } from '../dungeon/collision.js';
 
@@ -32,6 +32,11 @@ export function separateBodies(
     bodies.push({ ref: p, radius: PLAYER_RADIUS, isPlayer: true });
   }
   for (const e of enemies.values()) {
+    // Skip corpses. Dead enemies linger in room.enemies (alive: false) until the
+    // floor ends, but the client deletes their sprite on ENEMY_DIED. Separating
+    // against them would shove players around an invisible body — every other
+    // consumer (tickEnemies, stepProjectiles, ENEMY_MOVED) already guards on alive.
+    if (!e.alive) continue;
     bodies.push({ ref: e, radius: enemyRadius(e.typeId), isPlayer: false });
   }
 

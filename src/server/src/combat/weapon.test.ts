@@ -3,14 +3,14 @@ import { tryAutoFire, stepProjectiles } from './weapon.js';
 import {
   WEAPON_COOLDOWN_MS, PROJECTILE_SPEED, PROJECTILE_DAMAGE,
   PROJECTILE_HIT_RADIUS, PROJECTILE_MAX_RANGE, PLAYER_MAX_HP,
-} from '@veins/shared';
-import type { PlayerState, DungeonLayout } from '@veins/shared';
+} from '@testament/shared';
+import type { PlayerState, DungeonLayout } from '@testament/shared';
 import type { EnemyState } from './types.js';
 import type { Room } from '../room/state.js';
 import { buildInitialBoard } from '../board/layout.js';
 import { drainRateForFloor } from '../room/state.js';
 import { createRng, hashSeed } from '../rng/seeded.js';
-import { STARTER_RELICS } from '@veins/shared';
+import { STARTER_RELICS } from '@testament/shared';
 import { WOUND_BURST_BONUS, DOT_DURATION_S } from '../relic/effects.js';
 
 // Large flat room — all positions within [0,1000]×[0,1000] are walkable so that
@@ -50,7 +50,8 @@ function makeRoom(overrides: Partial<Room> = {}): Room {
     weaponCooldowns: new Map([['p1', 0], ['p2', 0]]),
     playerMoveInputs: new Map([['p1', { dx: 0, dy: 0 }], ['p2', { dx: 0, dy: 0 }]]),
     nextProjectileId: 0,
-    lootPool: [],
+    lootPools: {},
+    placedThisLootPhase: new Set(),
     fireDurations: new Map(),
     combatRng: createRng(hashSeed('run-1#combat')),
     ...overrides,
@@ -105,6 +106,28 @@ describe('tryAutoFire (T3, R5)', () => {
     expect(proj).not.toBeNull();
     expect(proj!.dx).toBeCloseTo(0);
     expect(proj!.dy).toBeCloseTo(1);
+  });
+
+  // Hold-to-fire (desktop): a player who opted out (firing=false) does not fire
+  // even with a valid aim and ready cooldown; setting firing=true fires again.
+  it('does not fire when the player has opted out (playerFiring=false)', () => {
+    const room = makeRoom();
+    room.aimStates.set('p1', { mode: 'manual', dx: 1, dy: 0 });
+    room.playerFiring = new Map([['p1', false]]);
+    expect(tryAutoFire(room, 'p1', DT)).toBeNull();
+  });
+
+  it('fires when the player is holding fire (playerFiring=true)', () => {
+    const room = makeRoom();
+    room.aimStates.set('p1', { mode: 'manual', dx: 1, dy: 0 });
+    room.playerFiring = new Map([['p1', true]]);
+    expect(tryAutoFire(room, 'p1', DT)).not.toBeNull();
+  });
+
+  it('auto-fires by default when playerFiring is absent (mobile / unchanged)', () => {
+    const room = makeRoom(); // no playerFiring map
+    room.aimStates.set('p1', { mode: 'manual', dx: 1, dy: 0 });
+    expect(tryAutoFire(room, 'p1', DT)).not.toBeNull();
   });
 
   it('resets cooldown to WEAPON_COOLDOWN_MS after firing', () => {

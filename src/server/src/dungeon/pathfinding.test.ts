@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { DungeonLayout } from '@veins/shared';
+import type { DungeonLayout } from '@testament/shared';
 import { findNextWaypoint } from './pathfinding.js';
 
 // Room-0 (top-left) and room-1 (bottom-right) connected by an L-shaped corridor.

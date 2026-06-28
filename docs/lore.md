@@ -1,67 +1,74 @@
-# Veins — Lore & Narrative
+# Testament — Lore (Overview)
 
-> **Status:** Canon
-> **Sources:** LORE_DESIGN.md §2 (Core Fantasy), §14 (Core Narrative Problem), §15 (Ending Structure); GPT_CHAT_HISTORY.txt (draft, Vessels/character notes)
-> **See also:** [cosmology.md](cosmology.md) · [factions.md](factions.md) · [progression.md](progression.md)
+> **Status:** Drafted (metaphysics is canon; proper nouns are open). Deep-dives in [lore/](lore/).
+> **See also:** [vision.md](vision.md) · [lore/cosmology.md](lore/cosmology.md) · [DECISION_LOG.md](DECISION_LOG.md) (TD-010)
 
 ## Purpose
 
-This file holds the **narrative frame** — who the players are, why they descend, and how a run "ends." It exists to keep fiction load-bearing: every story beat here must be expressible as a mechanic elsewhere in the bible. Lore that cannot be played is a bug, not a feature.
+The fiction of Testament: the world, the divine, the phenomena the hunter-scholars
+confront, and the institution that sends them. This file is the canon framework;
+the [lore/](lore/) deep-dives expand each thread. Proper nouns (the name of God,
+the world, the founding events, the Choirs) are deliberately left open for the
+Creative Director to set; the *structure* below is canon.
 
-## Concepts
+## Design Philosophy
 
-### Core Fantasy — The Vessels
+The fiction is built so that the central mechanic (read an Incarnate; never
+memorize it) is not a game concession but a truth of the world. Three pillars hold
+the cosmology up:
 
-Players are not heroes. They are:
+1. **There is one true, reigning, holy God.** Not dead, not absent. God acts
+   according to His own nature. Whether God is "silent" is a matter of human
+   interpretation, never an established fact. (Rare miracle-moments are seeded as a
+   future system, not designed here.)
+2. **Reality is undergoing sacred decay.** Something in the bond between the world
+   and the divine order is failing. This decay is the threat, the reason the era is
+   dark, and the soil that Manifestations grow from.
+3. **No one holds a complete answer.** An Incarnate is a phenomenon born of belief,
+   sin, or a broken relic. What it *is* cannot be settled, only classified from
+   limited observable facts. Every scholar interprets; the Collegium does a fragile,
+   genuine science of the sacred. This is why the game can never hand you a wiki:
+   in this world, no wiki exists.
 
-> **Vessels** — descendants of humanity.
+> **Lore = Mechanics.** "There is no universal answer, only classification from
+> observable facts" *is* the sign-language mechanic. The fiction forbids
+> memorization, so the game does too.
 
-They awaken inside a collapsing cosmic-biological structure and descend not for power, but because:
+## Non-negotiable Rules
 
-> Reality is destabilizing and the "Pulse" is fading.
+1. **God is real, holy, and reigning.** Never write the divine as dead, defeated, or
+   a mere force. This is not nihilistic cosmic horror; it is a world under judgment
+   with a present God.
+2. **No canonical answer to what an Incarnate is.** The fiction must never resolve
+   the question. Competing interpretations are the point; any "true nature" reveal
+   that ends the debate is forbidden.
+3. **The Collegium's authority is historical, not magical.** It confronts these
+   phenomena because of a long, accumulated relationship with prior events, the way
+   one calls a priest and not a pastor to a possession. Authority by lineage and
+   record, not by superpower.
+4. **The Choirs disagree.** Different generations hold different doctrines. The order
+   is not monolithic, and no Choir is "correct."
 
-Vessels are deliberately *empty* — nameless bodies with no innate class or kit. They are defined entirely by the shared board, which is the whole point: identity is something the party *assembles*, not something a character sheet grants.
+## Implementation Notes
 
-### Core Narrative Problem — why descend?
+- The "no universal answer" rule binds directly to the netcode: the Incarnate trait
+  roll never crosses the wire (CLAUDE.md invariant 3). The client, like the
+  in-world scholar, only ever sees signs.
+- The competing interpretive schools are the fictional skin on the [Choirs](lore/choirs.md)
+  and on the classification systems in [lore/bestiary-fiction.md](lore/bestiary-fiction.md).
+- A Field Testament is, in fiction, a scholar's recorded interpretation. The Archive
+  is the Collegium's contested, growing body of such records (session-scoped in play).
 
-> Reality is destabilizing due to conflicting interpretations of existence.
+## Open threads (Creative Director's call)
 
-The Pulse (reality engine) is fading. Without intervention, existence collapses into silence. The metaphysics of *why* — The Veins, The Heart, the competing interpretations — are detailed in [cosmology.md](cosmology.md).
-
-### The Ending Structure
-
-There is no single ending. Endings are layered and concurrent:
-
-- **Run endings** — escape, wipe, sacrifice.
-- **Zone endings** — local truths.
-- **Cycle endings** — meta-progression milestones.
-- **Faction endings** — interpretive conclusions (see [factions.md](factions.md)).
-
-> Every ending is valid but incomplete.
-
-## Player Experience
-
-The player should never feel *told* a story. They feel a **situation**: you woke up inside something dying, you don't know who you were, and the only way to mean anything is to bind yourself to strangers. Narrative arrives through pressure and consequence, not cutscenes. An "ending" is something the party *causes* and then interprets afterward — "we sacrificed Mara to extract, and that became our truth" — rather than a reward screen that explains itself.
-
-## Design alignment
-
-Lore here is the *first link of the spine*: **Lore = Mechanics**. "Vessels are empty shells" **is** the no-class rule. "Reality is destabilizing because interpretations conflict" **is** the doctrine system and the Heart's behavior. "Every ending is valid but incomplete" **is** the layered, non-canonical run/meta outcomes — a direct rejection of the single triumphant generic-RPG finale. The fiction favors interpretation: it describes a world that *reacts*, never one that lectures.
-
-## Implementation Considerations
-
-- Lore is mostly *non-implemented surface* — its job is to constrain other systems, not to ship as text. The testable hooks are: the no-class invariant (no pre-run kit selection anywhere in lobby/room code), and the multiple-outcome `RunOutcome` (`EXTRACTED` / `WIPED`, with sacrifice/forced variants designed) feeding the post-run screen and meta layer. See [systems/extraction.md](systems/extraction.md), [progression.md](progression.md).
-- Naming discipline: "Vessel," "the Pulse," "the Heart," "the Veins" are canonical terms — keep them in `GLOSSARY.md` if they enter code or UI strings.
+- The name and forms of address for God; the name of the world / the seat of the Collegium.
+- The "previous events" that grant the Collegium its authority (its founding history).
+- The names and doctrines of specific Choirs (candidates proposed in [lore/choirs.md](lore/choirs.md)).
+- The Collegium's saying about its purpose (candidates proposed in [lore/collegium.md](lore/collegium.md)).
+- The miracle-moment system (flagged by the Director as a separate discussion).
 
 ## Future Expansion
 
-- **Zone and faction endings** as concrete, interpretive end states (currently only run-level outcomes exist). These should emerge from accumulated behavior (which doctrine the party enacted), not from a chosen "path."
-- A **Vessel cosmetic/identity layer** that is purely emergent (the body visibly shaped by the run's mutations and doctrine), never a class skin. Ties to [content/mutations.md](content/mutations.md).
-- Light environmental storytelling (anatomical room names, residue of prior Vessels) that rewards interpretation without scripting a plot.
-
----
-
-## Draft / Exploratory — Character design
-
-> Mined from `GPT_CHAT_HISTORY.txt`. Reinforces the canonical Vessel framing; specifics not yet ratified.
-
-Avoid classes. Vessels are **nameless bodies — empty shells**; the board shapes their role. This supports the core philosophy: *"the organism determines the function,"* not *"the Warrior tanks."*
+- A timeline of the sacred decay and the founding events.
+- Named historical Incarnates and the schisms their classification caused between Choirs.
+- The relationship (if any) between the Collegium and a wider Church or Crown.

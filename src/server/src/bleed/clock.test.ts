@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { BleedClockState } from '@veins/shared';
+import type { BleedClockState } from '@testament/shared';
 import { tickBleedClock, advanceBleedForRoom, extractRun } from './clock.js';
 import { drainRateForFloor, advanceFloor, type Room } from '../room/state.js';
 
@@ -25,7 +25,8 @@ function makeRoom(overrides: Partial<Room> = {}): Room {
     weaponCooldowns: new Map(),
     playerMoveInputs: new Map(),
     nextProjectileId: 0,
-    lootPool: [],
+    lootPools: {},
+    placedThisLootPhase: new Set(),
     fireDurations: new Map(),
     combatRng: { next: () => 0 } as never,
     enemiesKilled: 0,

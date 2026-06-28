@@ -1,5 +1,5 @@
-import type { RelicBoard, Relic, RelicId, SynergyMap } from '@veins/shared';
-import { hexCoordKey, hexNeighbors } from '@veins/shared';
+import type { RelicBoard, Relic, RelicId, SynergyMap } from '@testament/shared';
+import { hexCoordKey, hexNeighbors } from '@testament/shared';
 
 export function evaluateSynergies(
   board: RelicBoard,

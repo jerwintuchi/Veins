@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { DungeonLayout, Rect } from '@veins/shared';
+import type { DungeonLayout, Rect } from '@testament/shared';
 import { generateDungeon, STANDARD_DUNGEON_CONFIG } from './bsp.js';
 
 // --- helpers ---

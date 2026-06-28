@@ -1,5 +1,5 @@
-import type { PlayerState, DungeonLayout } from '@veins/shared';
-import { PLAYER_SPEED } from '@veins/shared';
+import type { PlayerState, DungeonLayout } from '@testament/shared';
+import { PLAYER_SPEED } from '@testament/shared';
 import { clampToWalkable } from '../dungeon/collision.js';
 
 // Pure player movement. Normalizes the direction vector, then clamps the

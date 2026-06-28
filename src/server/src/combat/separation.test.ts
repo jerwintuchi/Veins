@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import type { DungeonLayout } from '@veins/shared';
+import type { DungeonLayout } from '@testament/shared';
 import {
   PLAYER_RADIUS,
   ENEMY_RADIUS_SHAMBLER,
   ENEMY_RADIUS_SPITTER,
   type PlayerState,
-} from '@veins/shared';
+} from '@testament/shared';
 import type { EnemyState } from './types.js';
 import { separateBodies } from './separation.js';
 
@@ -101,6 +101,39 @@ describe('separateBodies — enemy+enemy (T2, R2)', () => {
     separateBodies(players, enemies, FLAT);
 
     expect(dist(e1, e2)).toBeGreaterThanOrEqual(ENEMY_RADIUS_SHAMBLER + ENEMY_RADIUS_SPITTER - 0.01);
+  });
+});
+
+// ─── dead enemies excluded ─────────────────────────────────────────────────
+
+describe('separateBodies — dead enemies excluded (R2)', () => {
+  // Regression: a corpse (alive:false) lingers in room.enemies until the floor
+  // ends, but the client removed its sprite on ENEMY_DIED. It must NOT separate
+  // the player, or the player gets shoved sideways by an invisible body.
+  it('does not push a player away from a dead enemy', () => {
+    const p = makePlayer('p1', 100, 100);
+    const e = makeEnemy('e1', 'shambler', 100 + 10, 100); // would overlap if alive
+    e.alive = false;
+    const players = new Map([['p1', p]]);
+    const enemies  = new Map([['e1', e]]);
+
+    separateBodies(players, enemies, FLAT);
+
+    expect(p.x).toBe(100); expect(p.y).toBe(100);
+    expect(e.x).toBe(110); expect(e.y).toBe(100);
+  });
+
+  it('still separates a live enemy when a dead one overlaps too', () => {
+    const p = makePlayer('p1', 100, 100);
+    const dead = makeEnemy('dead', 'shambler', 100, 100); // coincident corpse — ignored
+    dead.alive = false;
+    const live = makeEnemy('live', 'shambler', 100 + 10, 100); // overlapping, alive
+    const players = new Map([['p1', p]]);
+    const enemies  = new Map([['dead', dead], ['live', live]]);
+
+    separateBodies(players, enemies, FLAT);
+
+    expect(dist(p, live)).toBeGreaterThanOrEqual(PLAYER_RADIUS + ENEMY_RADIUS_SHAMBLER - 0.01);
   });
 });
 

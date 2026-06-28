@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { Relic, RelicSlot, RelicTag } from '@veins/shared';
-import { hexCoordKey } from '@veins/shared';
+import type { Relic, RelicSlot, RelicTag } from '@testament/shared';
+import { hexCoordKey } from '@testament/shared';
 import { buildBoardStateSync, syncBoardToSocket, type SocketLike } from './sync.js';
 import type { Room } from './state.js';
 

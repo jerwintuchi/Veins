@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { PlayerId } from '@veins/shared';
-import { hexCoordKey, hexNeighbors } from '@veins/shared';
+import type { PlayerId } from '@testament/shared';
+import { hexCoordKey, hexNeighbors } from '@testament/shared';
 import { buildHexCoords, assignHomeQuadrants, buildInitialBoard } from './layout.js';
 
 describe('buildHexCoords', () => {

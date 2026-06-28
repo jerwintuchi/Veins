@@ -1,7 +1,7 @@
 // Server-only enemy combat types. Never sent to clients directly (I1).
 // Clients receive delta events (ENEMY_SPAWNED, ENEMY_DAMAGED, etc.) instead.
-import type { EnemyTypeId } from '@veins/shared';
-import type { PlayerId } from '@veins/shared';
+import type { EnemyTypeId } from '@testament/shared';
+import type { PlayerId } from '@testament/shared';
 
 export type EnemyId = string;
 

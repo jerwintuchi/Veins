@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { spawnEnemies } from './spawn.js';
 import { generateDungeon, STANDARD_DUNGEON_CONFIG } from '../dungeon/bsp.js';
 import { createRng, hashSeed } from '../rng/seeded.js';
-import { SHAMBLER_DEF, SPITTER_DEF } from '@veins/shared';
-import type { DungeonLayout } from '@veins/shared';
+import { SHAMBLER_DEF, SPITTER_DEF } from '@testament/shared';
+import type { DungeonLayout } from '@testament/shared';
 
 const TEST_RUN = 'test-run-abc';
 const TEST_DUNGEON = generateDungeon(TEST_RUN, STANDARD_DUNGEON_CONFIG, 1);

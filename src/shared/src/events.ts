@@ -23,7 +23,7 @@ export type RelicPlacedEvent = {
 
 // Server -> Socket (targeted error)
 export type RelicPlaceErrorEvent = {
-  code: 'SLOT_OCCUPIED' | 'WRONG_PHASE' | 'INVALID_COORD' | 'NOT_OWNER' | 'RELIC_NOT_IN_POOL';
+  code: 'SLOT_OCCUPIED' | 'WRONG_PHASE' | 'INVALID_COORD' | 'NOT_OWNER' | 'RELIC_NOT_IN_POOL' | 'DOWNED' | 'ALREADY_PLACED';
   message: string;
 };
 
@@ -50,7 +50,7 @@ export type LinkedFatesRequest = {
 
 // Server -> Socket (targeted error for a failed revive)
 export type LinkedFatesErrorEvent = {
-  code: 'INVALID_COORD' | 'NOT_OWNER' | 'NO_RELIC' | 'SLOT_OCCUPIED';
+  code: 'INVALID_COORD' | 'NOT_OWNER' | 'NO_RELIC' | 'SLOT_OCCUPIED' | 'WRONG_PHASE';
   message: string;
 };
 
@@ -65,7 +65,14 @@ export type BleedStageChangedEvent = { stage: 0 | 1 | 2 | 3 };
 export type RunEndedEvent = { outcome: RunOutcome; finalFloor: number; enemiesKilled: number };
 
 // Server -> Room (broadcast when the party descends to a new floor)
-export type FloorAdvancedEvent = { floor: number; dungeon: DungeonLayout };
+// playerPositions: where each player is repositioned for the new floor (entry
+// room). Lets the client snap sprites to the entry instead of leaving them where
+// they stood on the previous floor (which could overlap fresh enemy spawns).
+export type FloorAdvancedEvent = {
+  floor: number;
+  dungeon: DungeonLayout;
+  playerPositions?: Record<PlayerId, { x: number; y: number }>;
+};
 
 // --- Enemy + Combat events (server -> room, delta only, I6) ---
 
@@ -97,8 +104,9 @@ export type PlayerRevivedEvent = { playerId: PlayerId; hp: number };
 export type PlayerMovedEvent = { playerId: PlayerId; x: number; y: number };
 
 // Emitted when the phase changes (e.g., combat -> loot when last enemy dies).
-// lootPool is included when phase === 'loot'.
-export type PhaseChangedEvent = { phase: GamePhase; lootPool?: RelicId[] };
+// lootPools (per-player, keyed by PlayerId) is included when phase === 'loot';
+// each client reads its own entry by localPlayerId.
+export type PhaseChangedEvent = { phase: GamePhase; lootPools?: Record<PlayerId, RelicId[]> };
 
 // Emitted when a player's aim state changes (mode flip or auto-aim target shift).
 export type PlayerAimChangedEvent = {
@@ -139,8 +147,12 @@ export type RunStartedEvent = {
   board: RelicBoard;
   synergyMap: SynergyMap;
   relicRegistry: Record<RelicId, Relic>;
-  lootPool: RelicId[];
+  lootPools: Record<PlayerId, RelicId[]>;
   playerPositions: Record<PlayerId, { x: number; y: number }>;
+  // Floor-1 enemies travel in the RUN_STARTED payload (not as separate
+  // ENEMY_SPAWNED events) because the Phaser scene binds its socket listeners
+  // only after this event fires — same reason dungeon/playerPositions ride here.
+  enemies: { enemyId: string; typeId: EnemyTypeId; x: number; y: number; hp: number }[];
 };
 
 // Server -> single socket (reconnection). The full snapshot needed to rebuild a
@@ -154,7 +166,7 @@ export type StateResyncEvent = {
   board: RelicBoard;
   synergyMap: SynergyMap;
   relicRegistry: Record<RelicId, Relic>;
-  lootPool: RelicId[];
+  lootPools: Record<PlayerId, RelicId[]>;
   bleedClock: BleedClockState;
   bleedStage: 0 | 1 | 2 | 3;
   outcome: RunOutcome | null;

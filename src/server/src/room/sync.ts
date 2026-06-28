@@ -1,4 +1,4 @@
-import type { BoardStateSyncEvent, StateResyncEvent } from '@veins/shared';
+import type { BoardStateSyncEvent, StateResyncEvent } from '@testament/shared';
 import { evaluateSynergies } from '../board/synergy.js';
 import { bleedStageOf } from './state.js';
 import type { Room } from './state.js';
@@ -42,7 +42,7 @@ export function buildStateResync(room: Room): StateResyncEvent {
     board: room.board,
     synergyMap: evaluateSynergies(room.board, room.registry),
     relicRegistry: Object.fromEntries(room.registry),
-    lootPool: room.lootPool,
+    lootPools: room.lootPools,
     bleedClock: room.bleedClock,
     bleedStage: bleedStageOf(room.bleedClock.current, room.bleedClock.max),
     outcome: room.outcome,

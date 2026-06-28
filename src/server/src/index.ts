@@ -9,11 +9,14 @@ import type {
   RoomSummary,
   PlayerId,
   RoomCode,
-} from '@veins/shared';
-import { BLEED_TICK_INTERVAL_MS, hexCoordKey } from '@veins/shared';
+} from '@testament/shared';
+import { BLEED_TICK_INTERVAL_MS, hexCoordKey } from '@testament/shared';
 
 // How often the server ticks enemy AI and broadcasts combat events (R12).
-const COMBAT_TICK_MS = 100;
+// 20Hz (50ms): all combat math is dt-based so gameplay speed is unchanged, but
+// movement/enemy position updates arrive twice as often → noticeably smoother
+// client interpolation and ~half the input-to-render latency.
+const COMBAT_TICK_MS = 50;
 import { RoomManager } from './room/manager.js';
 import type { Room } from './room/state.js';
 import { bleedStageOf } from './room/state.js';
@@ -25,7 +28,7 @@ import { movePlayer } from './combat/movement.js';
 import { stepCombat } from './combat/roomCombat.js';
 import { selectAutoAimTarget } from './combat/autoAim.js';
 import { tryAutoFire, stepProjectiles } from './combat/weapon.js';
-import { generateLootPool } from './loot/pool.js';
+import { generateLootPools } from './loot/pool.js';
 import {
   scoreRelicPlaced,
   scoreEnemyKilledByTumor,
@@ -46,6 +49,7 @@ export interface ServerSocket {
   on(event: string, listener: (payload: unknown) => void): void;
   emit(event: string, payload: unknown): void;
   join(room: string): void;
+  leave?(room: string): void;
 }
 export interface RoomEmitter {
   emit(event: string, payload: unknown): void;
@@ -132,6 +136,7 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
       if (!code) return;
       const res = manager.leaveRoom(code, playerId);
       socket.data.roomCode = undefined;
+      socket.leave?.(code); // stop receiving this room's broadcasts after leaving
       if (res.ok && !res.deleted && res.room) {
         io.to(code).emit('ROOM_UPDATE', { room: summarizeRoom(res.room) });
       }
@@ -153,13 +158,18 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
         board: res.room.board,
         synergyMap: evaluateSynergies(res.room.board, res.room.registry),
         relicRegistry: Object.fromEntries(res.room.registry),
-        lootPool: res.room.lootPool,
+        lootPools: res.room.lootPools,
         phase: res.room.phase,
         playerPositions: Object.fromEntries(
           [...res.room.playerStates.entries()].map(([id, s]) => [id, { x: s.x, y: s.y }])
         ),
+        // Floor-1 enemies ride the RUN_STARTED payload: the client's Phaser scene
+        // binds its socket listeners only after this event, so separate
+        // ENEMY_SPAWNED events would be missed (and never rendered).
+        enemies: [...res.room.enemies].map(([id, e]) => ({ enemyId: id, typeId: e.typeId, x: e.x, y: e.y, hp: e.hp })),
       });
-      // Broadcast floor-1 enemies spawned at run start.
+      // Also emit ENEMY_SPAWNED for any client whose scene is already live
+      // (idempotent on the client); the payload above is the authoritative path.
       for (const [id, e] of res.room.enemies) {
         io.to(code).emit('ENEMY_SPAWNED', { enemyId: id, typeId: e.typeId, x: e.x, y: e.y, hp: e.hp });
       }
@@ -176,8 +186,24 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
         socket.emit('RELIC_PLACE_ERROR', { code: 'INVALID_COORD', message: 'Malformed place-relic request.' });
         return;
       }
-      if (!room.lootPool.includes(req.relicId)) {
-        socket.emit('RELIC_PLACE_ERROR', { code: 'RELIC_NOT_IN_POOL', message: 'That relic is not in the current loot pool.' });
+      // A downed player is incapacitated — they cannot act until a teammate revives
+      // them (Linked Fates). Without this guard a player who went down in combat can
+      // still place relics once the floor clears into loot (I2: validate, then mutate).
+      if (room.playerStates.get(playerId)?.downed) {
+        socket.emit('RELIC_PLACE_ERROR', { code: 'DOWNED', message: 'You cannot place relics while downed.' });
+        return;
+      }
+      // One relic per loot phase: a player commits to a single pick from their pool.
+      // The set is cleared each time a new loot phase begins (see runCombatTick).
+      if (room.placedThisLootPhase.has(playerId)) {
+        socket.emit('RELIC_PLACE_ERROR', { code: 'ALREADY_PLACED', message: 'You can only place one relic per loot phase.' });
+        return;
+      }
+      // Per-player loot: validate and consume against THIS player's own pool, so
+      // one player's placement never depletes another's choices.
+      const playerPool = room.lootPools[playerId] ?? [];
+      if (!playerPool.includes(req.relicId)) {
+        socket.emit('RELIC_PLACE_ERROR', { code: 'RELIC_NOT_IN_POOL', message: 'That relic is not in your loot pool.' });
         return;
       }
       const result = placeRelic(room.board, req, playerId, room.phase, room.registry);
@@ -186,7 +212,10 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
         return;
       }
       room.board = result.board;
-      room.lootPool = room.lootPool.filter(id => id !== req.relicId);
+      // The chosen relic is placed; the rest of this player's pool is forfeited for
+      // the phase. Clear it so a stale tray can't tempt a second (rejected) attempt.
+      room.lootPools[playerId] = [];
+      room.placedThisLootPhase.add(playerId);
       io.to(room.code).emit('RELIC_PLACED', result.event);
 
       scoreRelicPlaced(room, req.relicId, req.coord, playerId);
@@ -201,9 +230,20 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
         socket.emit('LINKED_FATES_ERROR', { code: 'INVALID_COORD', message: 'You are not in an active room.' });
         return;
       }
-      // Phase guard: Linked Fates is only meaningful during active combat (R11, P6).
-      if (room.phase !== 'combat') {
-        socket.emit('LOBBY_ERROR', { code: 'WRONG_PHASE', message: 'Revive is only allowed during combat.' });
+      // Phase guard: Linked Fates is allowed during the two active gameplay phases —
+      // combat (dramatic mid-fight revive) and loot (regroup before descending, so a
+      // teammate downed as the fight ended isn't stranded). Disallowed only during the
+      // brief 'transition'. The error rides LINKED_FATES_ERROR so the revive panel
+      // actually surfaces it (LOBBY_ERROR is invisible there). See DECISION_LOG
+      // 2026-06-28 (revive allowed in loot).
+      if (room.phase !== 'combat' && room.phase !== 'loot') {
+        socket.emit('LINKED_FATES_ERROR', { code: 'WRONG_PHASE', message: 'You can only revive during the run.' });
+        return;
+      }
+      // A downed player cannot revive a teammate — they are incapacitated themselves.
+      // reviverId is forced to the authenticated player below, so guard on that.
+      if (room.playerStates.get(playerId)?.downed) {
+        socket.emit('LINKED_FATES_ERROR', { code: 'INVALID_COORD', message: 'You cannot revive while downed.' });
         return;
       }
       const req = payload as LinkedFatesRequest;
@@ -325,10 +365,9 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
     // move-player events arrive, closing the event-flood speed exploit (R4, P2).
     socket.on('move-player', (payload) => {
       const room = currentRoom();
-      if (!room) {
-        socket.emit('LOBBY_ERROR', { code: 'NOT_IN_ROOM', message: 'You are not in a room.' });
-        return;
-      }
+      // Per-frame input: silently ignore when not in a room (e.g. stray emits from
+      // the lobby). Emitting a LOBBY_ERROR here would spam the client every frame.
+      if (!room) return;
       const req = payload as { dx: unknown; dy: unknown };
       if (!req || typeof req.dx !== 'number' || typeof req.dy !== 'number') {
         socket.emit('LOBBY_ERROR', { code: 'INVALID_REQUEST', message: 'Malformed move-player request.' });
@@ -344,10 +383,9 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
     // vector. Movement is not phase-gated (R6).
     socket.on('aim-player', (payload) => {
       const room = currentRoom();
-      if (!room) {
-        socket.emit('LOBBY_ERROR', { code: 'NOT_IN_ROOM', message: 'You are not in a room.' });
-        return;
-      }
+      // Per-frame input: silently ignore when not in a room (e.g. mouse-move on the
+      // lobby). Emitting a LOBBY_ERROR here would spam the client every frame.
+      if (!room) return;
       const req = payload as { dx: unknown; dy: unknown };
       if (!req || typeof req.dx !== 'number' || typeof req.dy !== 'number') {
         socket.emit('LOBBY_ERROR', { code: 'INVALID_REQUEST', message: 'Malformed aim-player request.' });
@@ -373,6 +411,17 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
           io.to(room.code).emit('PLAYER_AIM_CHANGED', { playerId, mode: 'manual', dx: ndx, dy: ndy });
         }
       }
+    });
+
+    // Hold-to-fire intent (desktop). The client sets firing on mouse-down and clears
+    // it on mouse-up; the server still rate-limits shots by the weapon cooldown, so
+    // this only gates WHEN auto-fire is allowed — no client-authored projectiles (I2).
+    socket.on('set-firing', (payload) => {
+      const room = currentRoom();
+      if (!room) return; // per-frame-ish input: ignore silently when not in a room
+      const req = payload as { firing: unknown };
+      if (!req || typeof req.firing !== 'boolean') return;
+      (room.playerFiring ??= new Map()).set(playerId, req.firing);
     });
 
     socket.on('disconnect', () => {
@@ -490,9 +539,22 @@ export function runCombatTick(io: SocketIOServerLike, manager: RoomManager, delt
       }
     }
 
+    // Corpses are not retained. Now that ENEMY_DIED has been broadcast (clients
+    // have removed the sprite) and the kills have been scored, drop the dead
+    // enemies from room state. Otherwise corpses accumulate for the whole floor:
+    // they get cloned and iterated by every tick (tickEnemies, ENEMY_MOVED,
+    // stepProjectiles) and pair-checked O(n²) by separation — a real bottleneck
+    // once a floor has racked up many kills. lastAttackerByEnemy is read just
+    // above for scoring, so it is safe to prune here too.
+    for (const id of res.newlyDeadEnemyIds) {
+      room.enemies.delete(id);
+      room.lastAttackerByEnemy?.delete(id);
+    }
+
     if (res.phaseChanged) {
-      room.lootPool = generateLootPool([...room.registry.keys()], room.board, room.runId, room.floor);
-      io.to(room.code).emit('PHASE_CHANGED', { phase: 'loot', lootPool: room.lootPool });
+      room.lootPools = generateLootPools([...room.registry.keys()], room.board, room.runId, room.floor, room.players);
+      room.placedThisLootPhase = new Set(); // fresh loot phase → each player may place again
+      io.to(room.code).emit('PHASE_CHANGED', { phase: 'loot', lootPools: room.lootPools });
     }
 
     if (res.wiped && res.ended) {

@@ -1,11 +1,11 @@
-import type { RelicBoard, Relic, RelicId, PlayerId } from '@veins/shared';
+import type { RelicBoard, Relic, RelicId, PlayerId } from '@testament/shared';
 import type {
   PlaceRelicRequest,
   GamePhase,
   RelicPlacedEvent,
   RelicPlaceErrorEvent,
-} from '@veins/shared';
-import { hexCoordKey } from '@veins/shared';
+} from '@testament/shared';
+import { hexCoordKey } from '@testament/shared';
 import { evaluateSynergies } from './synergy.js';
 
 export type PlaceRelicSuccess = {
@@ -55,12 +55,9 @@ export function placeRelic(
     };
   }
 
-  if (slot.relicId !== null) {
-    return {
-      ok: false,
-      error: { code: 'SLOT_OCCUPIED', message: 'That slot is already occupied.' },
-    };
-  }
+  // Placing into an occupied own-slot REPLACES the relic there (the old one is
+  // discarded). This lets a player keep refining a full board; the one-per-loot-phase
+  // limit (enforced in the socket handler) still caps it to a single change per floor.
 
   const newBoard: RelicBoard = {
     slots: {

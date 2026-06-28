@@ -1,4 +1,4 @@
-import type { RelicBoard, SynergyMap, PlayerId } from '@veins/shared';
+import type { RelicBoard, SynergyMap, PlayerId } from '@testament/shared';
 import type { Room } from '../room/state.js';
 
 // --- Doctrine flavor text (broadcast when each doctrine's tier-2 threshold fires) ---

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { Room } from '../room/state.js';
 import { drainRateForFloor } from '../room/state.js';
 import { buildInitialBoard } from '../board/layout.js';
-import { STARTER_RELICS } from '@veins/shared';
+import { STARTER_RELICS } from '@testament/shared';
 import {
   scoreRelicPlaced,
   scoreEnemyKilledByTumor,
@@ -27,7 +27,7 @@ function makeDoctrineRoom(overrides: Partial<Room> = {}): Room {
     outcome: null, dungeon: null,
     enemies: new Map(), playerStates: new Map(), aimStates: new Map(),
     projectiles: new Map(), weaponCooldowns: new Map(), playerMoveInputs: new Map(),
-    nextProjectileId: 0, lootPool: [], fireDurations: new Map(),
+    nextProjectileId: 0, lootPools: {}, placedThisLootPhase: new Set(), fireDurations: new Map(),
     combatRng: { next: () => 0 } as never,
     enemiesKilled: 0,
     doctrineScores: { sanctum: 0, tumor: 0, chorus: 0, penitent: 0 },

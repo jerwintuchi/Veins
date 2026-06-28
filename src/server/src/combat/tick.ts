@@ -1,5 +1,5 @@
-import type { PlayerId, PlayerState, DungeonLayout } from '@veins/shared';
-import { ENEMY_TYPES } from '@veins/shared';
+import type { PlayerId, PlayerState, DungeonLayout } from '@testament/shared';
+import { ENEMY_TYPES } from '@testament/shared';
 import type { EnemyId, EnemyState, CombatEvent } from './types.js';
 import { clampToWalkable } from '../dungeon/collision.js';
 import { findNextWaypoint } from '../dungeon/pathfinding.js';

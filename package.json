@@ -1,13 +1,12 @@
 {
-  "name": "veins",
+  "name": "testament",
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev:server": "pnpm --filter @veins/server dev",
-    "dev:client": "pnpm --filter @veins/client dev",
+    "dev:server": "pnpm --filter @testament/server dev",
     "test": "pnpm -r test",
     "test:watch": "pnpm -r test:watch",
-    "build": "pnpm --filter @veins/shared build && pnpm --filter @veins/server build && pnpm --filter @veins/client build"
+    "build": "pnpm --filter @testament/shared build && pnpm --filter @testament/server build"
   },
   "engines": {
     "node": ">=20",

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { selectAutoAimTarget, AUTO_AIM_RANGE } from './autoAim.js';
-import { SHAMBLER_DEF } from '@veins/shared';
+import { SHAMBLER_DEF } from '@testament/shared';
 import type { EnemyState } from './types.js';
 
 function makeEnemy(id: string, x: number, y: number, alive = true): EnemyState {

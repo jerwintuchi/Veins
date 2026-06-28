@@ -1,6 +1,4 @@
 {
-  "buildCommand": "pnpm --filter @veins/shared build && pnpm --filter @veins/client build",
-  "outputDirectory": "src/client/dist",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "framework": "vite"
+  "_note": "Client deployment is redefined for the Godot 4 HTML5/WASM export (see docs/technical/godot-client.md). The previous React/Phaser client was removed in the Testament reboot; this config is a placeholder until the Godot export pipeline is defined.",
+  "installCommand": "pnpm install --frozen-lockfile"
 }
