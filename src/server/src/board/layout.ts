@@ -1,5 +1,5 @@
-import type { HexCoord, PlayerId, RelicBoard, RelicSlot } from '@veins/shared';
-import { hexCoordKey } from '@veins/shared';
+import type { HexCoord, PlayerId, RelicBoard, RelicSlot } from '@testament/shared';
+import { hexCoordKey } from '@testament/shared';
 
 // All axial coords within hex-distance `radius` of the origin.
 // radius 2 -> 19 cells (1 + 6 + 12).

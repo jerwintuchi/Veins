@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import type { DungeonLayout } from '@veins/shared';
+import type { DungeonLayout } from '@testament/shared';
 import {
   PLAYER_RADIUS,
   ENEMY_RADIUS_SHAMBLER,
   ENEMY_RADIUS_SPITTER,
   type PlayerState,
-} from '@veins/shared';
+} from '@testament/shared';
 import type { EnemyState } from './types.js';
 import { separateBodies } from './separation.js';
 

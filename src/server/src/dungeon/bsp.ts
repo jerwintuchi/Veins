@@ -5,7 +5,7 @@ import type {
   Corridor,
   Point,
   Rect,
-} from '@veins/shared';
+} from '@testament/shared';
 import { createRng, hashSeed, type Rng } from '../rng/seeded.js';
 
 // Standard dungeon tuning. 1 world unit = 1 Phaser pixel at zoom=1.

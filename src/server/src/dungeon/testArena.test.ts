@@ -4,7 +4,7 @@ import {
   generateTestArenaDungeon,
   spawnTestArenaEnemies,
 } from './testArena.js';
-import { ENEMY_TYPES } from '@veins/shared';
+import { ENEMY_TYPES } from '@testament/shared';
 
 const ENV_KEY = 'VEINS_TEST_ARENA';
 

@@ -1,11 +1,11 @@
-import type { RelicBoard, Relic, RelicId, PlayerId } from '@veins/shared';
+import type { RelicBoard, Relic, RelicId, PlayerId } from '@testament/shared';
 import type {
   PlaceRelicRequest,
   GamePhase,
   RelicPlacedEvent,
   RelicPlaceErrorEvent,
-} from '@veins/shared';
-import { hexCoordKey } from '@veins/shared';
+} from '@testament/shared';
+import { hexCoordKey } from '@testament/shared';
 import { evaluateSynergies } from './synergy.js';
 
 export type PlaceRelicSuccess = {

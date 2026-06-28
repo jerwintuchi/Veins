@@ -1,11 +1,11 @@
-import type { RelicBoard, Relic, RelicId } from '@veins/shared';
+import type { RelicBoard, Relic, RelicId } from '@testament/shared';
 import type {
   LinkedFatesRequest,
   LinkedFatesErrorEvent,
   RelicRemovedEvent,
   RelicPlacedEvent,
-} from '@veins/shared';
-import { hexCoordKey } from '@veins/shared';
+} from '@testament/shared';
+import { hexCoordKey } from '@testament/shared';
 import { evaluateSynergies } from './synergy.js';
 
 // Ordered tuple: RELIC_REMOVED must be emitted before RELIC_PLACED (R6).

@@ -1,4 +1,4 @@
-import type { DungeonLayout } from '@veins/shared';
+import type { DungeonLayout } from '@testament/shared';
 import { isWalkable } from './collision.js';
 
 const MAX_ITERATIONS = 5000;

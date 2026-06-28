@@ -1,4 +1,4 @@
-import type { RelicBoard, RelicId, PlayerId } from '@veins/shared';
+import type { RelicBoard, RelicId, PlayerId } from '@testament/shared';
 import { createRng, hashSeed, type Rng } from '../rng/seeded.js';
 
 export const LOOT_POOL_SIZE = 3;

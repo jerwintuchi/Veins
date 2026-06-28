@@ -1,4 +1,4 @@
-import type { DungeonConfig, FloorAdvancedEvent } from '@veins/shared';
+import type { DungeonConfig, FloorAdvancedEvent } from '@testament/shared';
 import { advanceFloor, type Room } from '../room/state.js';
 import { generateDungeon, STANDARD_DUNGEON_CONFIG } from '../dungeon/bsp.js';
 

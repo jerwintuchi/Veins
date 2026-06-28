@@ -12,7 +12,7 @@ import type {
   DungeonLayout,
   AimState,
   ProjectileState,
-} from '@veins/shared';
+} from '@testament/shared';
 import type { EnemyId, EnemyState } from '../combat/types.js';
 import type { Rng } from '../rng/seeded.js';
 import { createRng } from '../rng/seeded.js';

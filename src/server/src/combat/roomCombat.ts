@@ -1,4 +1,4 @@
-import type { RunEndedEvent } from '@veins/shared';
+import type { RunEndedEvent } from '@testament/shared';
 import { tickEnemies, applyEnemyAttacks, allEnemiesDead } from './tick.js';
 import { separateBodies } from './separation.js';
 import type { CombatEvent } from './types.js';

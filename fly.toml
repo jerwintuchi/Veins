@@ -1,7 +1,7 @@
-# Fly.io app config for the Veins game server.
+# Fly.io app config for the Testament game server.
 # Run `fly launch` once to create the app, then `fly deploy` to deploy.
-# Replace "veins-server" with your actual app name from `fly launch`.
-app = "veins-server"
+# Replace "testament-server" with your actual app name from `fly launch`.
+app = "testament-server"
 primary_region = "iad"
 
 [build]

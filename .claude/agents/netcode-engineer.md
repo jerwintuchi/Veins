@@ -14,7 +14,7 @@ Your mandate: all authoritative game state lives in `src/server/`. You enforce t
 3. Confirm your changes don't move game logic into `src/client/` or `src/shared/`
 
 **When implementing a new event handler:**
-- Validate input shape before any state mutation (use types from `@veins/shared`)
+- Validate input shape before any state mutation (use types from `@testament/shared`)
 - Validate action is authorized (correct room, correct phase, correct player)
 - Mutate state synchronously, return new state
 - Broadcast delta event(s) to room after mutation

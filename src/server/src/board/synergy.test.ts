@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { Relic, RelicSlot, RelicTag } from '@veins/shared';
-import { hexCoordKey } from '@veins/shared';
+import type { Relic, RelicSlot, RelicTag } from '@testament/shared';
+import { hexCoordKey } from '@testament/shared';
 import { evaluateSynergies } from './synergy.js';
 
 // --- test helpers ---

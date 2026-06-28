@@ -1,11 +1,11 @@
-import type { DungeonLayout, PlayerId } from '@veins/shared';
-import type { PlayerState } from '@veins/shared';
+import type { DungeonLayout, PlayerId } from '@testament/shared';
+import type { PlayerState } from '@testament/shared';
 import {
   PLAYER_RADIUS,
   ENEMY_RADIUS_SHAMBLER,
   ENEMY_RADIUS_SPITTER,
   type EnemyTypeId,
-} from '@veins/shared';
+} from '@testament/shared';
 import type { EnemyId, EnemyState } from './types.js';
 import { clampToWalkable } from '../dungeon/collision.js';
 

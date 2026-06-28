@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { stepCombat } from './roomCombat.js';
-import { SHAMBLER_DEF, PLAYER_MAX_HP, STARTER_RELICS, PLAYER_RADIUS, ENEMY_RADIUS_SHAMBLER } from '@veins/shared';
-import type { PlayerState } from '@veins/shared';
+import { SHAMBLER_DEF, PLAYER_MAX_HP, STARTER_RELICS, PLAYER_RADIUS, ENEMY_RADIUS_SHAMBLER } from '@testament/shared';
+import type { PlayerState } from '@testament/shared';
 import type { EnemyState } from './types.js';
 import type { Room } from '../room/state.js';
 import { buildInitialBoard } from '../board/layout.js';

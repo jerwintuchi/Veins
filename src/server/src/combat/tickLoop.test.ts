@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { runCombatTick, registerHandlers, type ServerSocket, type SocketIOServerLike } from '../index.js';
 import { RoomManager } from '../room/manager.js';
-import { SHAMBLER_DEF, PLAYER_MAX_HP, PROJECTILE_MAX_RANGE } from '@veins/shared';
+import { SHAMBLER_DEF, PLAYER_MAX_HP, PROJECTILE_MAX_RANGE } from '@testament/shared';
 import type { EnemyState } from './types.js';
-import type { PlayerState } from '@veins/shared';
+import type { PlayerState } from '@testament/shared';
 
 function makeFakeIo() {
   const roomEmits: Array<{ room: string; event: string; payload: unknown }> = [];

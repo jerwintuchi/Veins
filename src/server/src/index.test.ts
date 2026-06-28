@@ -6,7 +6,7 @@ import { buildInitialBoard } from './board/layout.js';
 import { drainRateForFloor } from './room/state.js';
 import { generateDungeon, STANDARD_DUNGEON_CONFIG } from './dungeon/bsp.js';
 import { createRng, hashSeed } from './rng/seeded.js';
-import { STARTER_RELICS } from '@veins/shared';
+import { STARTER_RELICS } from '@testament/shared';
 import { FIRE_DURATION_S } from './relic/effects.js';
 import { generateLootPools } from './loot/pool.js';
 
@@ -115,7 +115,7 @@ describe('registerHandlers wiring (smoke)', () => {
   });
 
   it('RUN_STARTED carries relicRegistry with all STARTER_RELICS (T2-board-ui, R3)', async () => {
-    const { STARTER_RELICS } = await import('@veins/shared');
+    const { STARTER_RELICS } = await import('@testament/shared');
     const { io, roomEmits, connect } = makeFakeIo();
     const manager = new RoomManager({ generateCode: () => 'RROOM', generateRunId: () => 'run-rr' });
     registerHandlers(io, manager);

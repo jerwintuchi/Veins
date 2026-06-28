@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateLootPool, generateLootPools, LOOT_POOL_SIZE } from './pool.js';
-import type { RelicBoard } from '@veins/shared';
+import type { RelicBoard } from '@testament/shared';
 
 const EMPTY_BOARD: RelicBoard = { slots: {} };
 

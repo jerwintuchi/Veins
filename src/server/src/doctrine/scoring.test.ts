@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { Room } from '../room/state.js';
 import { drainRateForFloor } from '../room/state.js';
 import { buildInitialBoard } from '../board/layout.js';
-import { STARTER_RELICS } from '@veins/shared';
+import { STARTER_RELICS } from '@testament/shared';
 import {
   scoreRelicPlaced,
   scoreEnemyKilledByTumor,

@@ -1,5 +1,5 @@
 {
-  "name": "@veins/server",
+  "name": "@testament/server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@veins/shared": "workspace:*",
+    "@testament/shared": "workspace:*",
     "socket.io": "^4.7.0"
   },
   "devDependencies": {

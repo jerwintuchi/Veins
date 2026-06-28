@@ -262,7 +262,7 @@ describe('RoomManager — Bleed Clock integration', () => {
 
   // T11 — R2: startRun initializes playerStates
   it('all players have a playerState with hp===PLAYER_MAX_HP and downed===false after startRun (T11, R2)', async () => {
-    const { PLAYER_MAX_HP } = await import('@veins/shared');
+    const { PLAYER_MAX_HP } = await import('@testament/shared');
     const mgr = new RoomManager({ generateCode: seqCodes(), generateRunId: () => 'run-ps' });
     const { room } = mgr.createRoom('h1');
     mgr.joinRoom(room.code, 'p2');
@@ -326,7 +326,7 @@ describe('RoomManager — Bleed Clock integration', () => {
 
   // T2 (board-ui spec) — R2: startRun populates registry with STARTER_RELICS
   it('registry contains all STARTER_RELICS after startRun (T2-board-ui, R2)', async () => {
-    const { STARTER_RELICS } = await import('@veins/shared');
+    const { STARTER_RELICS } = await import('@testament/shared');
     const mgr = new RoomManager({ generateCode: seqCodes() });
     const { room } = mgr.createRoom('h1');
     mgr.joinRoom(room.code, 'p2');

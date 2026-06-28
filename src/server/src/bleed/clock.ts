@@ -1,4 +1,4 @@
-import type { BleedClockState, BleedClockTickEvent, RunEndedEvent } from '@veins/shared';
+import type { BleedClockState, BleedClockTickEvent, RunEndedEvent } from '@testament/shared';
 import type { Room } from '../room/state.js';
 import {
   bleedStageOf,

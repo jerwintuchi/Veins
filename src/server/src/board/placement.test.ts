@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { Relic, RelicSlot, RelicTag, GamePhase } from '@veins/shared';
-import { hexCoordKey } from '@veins/shared';
+import type { Relic, RelicSlot, RelicTag, GamePhase } from '@testament/shared';
+import { hexCoordKey } from '@testament/shared';
 import { placeRelic } from './placement.js';
 
 // --- test helpers ---

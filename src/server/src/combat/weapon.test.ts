@@ -3,14 +3,14 @@ import { tryAutoFire, stepProjectiles } from './weapon.js';
 import {
   WEAPON_COOLDOWN_MS, PROJECTILE_SPEED, PROJECTILE_DAMAGE,
   PROJECTILE_HIT_RADIUS, PROJECTILE_MAX_RANGE, PLAYER_MAX_HP,
-} from '@veins/shared';
-import type { PlayerState, DungeonLayout } from '@veins/shared';
+} from '@testament/shared';
+import type { PlayerState, DungeonLayout } from '@testament/shared';
 import type { EnemyState } from './types.js';
 import type { Room } from '../room/state.js';
 import { buildInitialBoard } from '../board/layout.js';
 import { drainRateForFloor } from '../room/state.js';
 import { createRng, hashSeed } from '../rng/seeded.js';
-import { STARTER_RELICS } from '@veins/shared';
+import { STARTER_RELICS } from '@testament/shared';
 import { WOUND_BURST_BONUS, DOT_DURATION_S } from '../relic/effects.js';
 
 // Large flat room — all positions within [0,1000]×[0,1000] are walkable so that

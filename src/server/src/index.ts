@@ -9,8 +9,8 @@ import type {
   RoomSummary,
   PlayerId,
   RoomCode,
-} from '@veins/shared';
-import { BLEED_TICK_INTERVAL_MS, hexCoordKey } from '@veins/shared';
+} from '@testament/shared';
+import { BLEED_TICK_INTERVAL_MS, hexCoordKey } from '@testament/shared';
 
 // How often the server ticks enemy AI and broadcasts combat events (R12).
 // 20Hz (50ms): all combat math is dt-based so gameplay speed is unchanged, but

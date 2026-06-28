@@ -5,9 +5,9 @@ import {
   PROJECTILE_HIT_RADIUS,
   PROJECTILE_MAX_RANGE,
   type ProjectileState,
-} from '@veins/shared';
+} from '@testament/shared';
 import type { Room } from '../room/state.js';
-import type { PlayerId } from '@veins/shared';
+import type { PlayerId } from '@testament/shared';
 import { evaluateRelicHit, DOT_DURATION_S } from '../relic/effects.js';
 import { evaluateSynergies } from '../board/synergy.js';
 import { isWalkable } from '../dungeon/collision.js';

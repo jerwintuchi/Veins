@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { movePlayer } from './movement.js';
-import { PLAYER_SPEED } from '@veins/shared';
-import type { PlayerState, DungeonLayout } from '@veins/shared';
+import { PLAYER_SPEED } from '@testament/shared';
+import type { PlayerState, DungeonLayout } from '@testament/shared';
 
 // Large flat room — all positions in [0,512]×[0,512] are walkable.
 const DUNGEON: DungeonLayout = {

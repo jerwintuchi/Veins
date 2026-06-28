@@ -1,4 +1,4 @@
-import type { BoardStateSyncEvent, StateResyncEvent } from '@veins/shared';
+import type { BoardStateSyncEvent, StateResyncEvent } from '@testament/shared';
 import { evaluateSynergies } from '../board/synergy.js';
 import { bleedStageOf } from './state.js';
 import type { Room } from './state.js';

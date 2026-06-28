@@ -4,8 +4,8 @@
 // floor (and reaching the loot phase) takes seconds. Production/the real game is
 // untouched unless the flag is explicitly set — the manager only calls into here
 // when isTestArenaEnabled() is true (see room/manager.ts).
-import type { DungeonLayout } from '@veins/shared';
-import { ENEMY_TYPES, type EnemyTypeId } from '@veins/shared';
+import type { DungeonLayout } from '@testament/shared';
+import { ENEMY_TYPES, type EnemyTypeId } from '@testament/shared';
 import type { EnemyId, EnemyState } from '../combat/types.js';
 
 // A single, generously-sized room — big enough to move and kite, no corridors.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { BleedClockState } from '@veins/shared';
+import type { BleedClockState } from '@testament/shared';
 import { tickBleedClock, advanceBleedForRoom, extractRun } from './clock.js';
 import { drainRateForFloor, advanceFloor, type Room } from '../room/state.js';
 

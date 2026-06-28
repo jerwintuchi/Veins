@@ -1,5 +1,5 @@
-import type { RelicBoard, SynergyMap, RelicId, PlayerId } from '@veins/shared';
-import { hexCoordKey, hexNeighbors } from '@veins/shared';
+import type { RelicBoard, SynergyMap, RelicId, PlayerId } from '@testament/shared';
+import { hexCoordKey, hexNeighbors } from '@testament/shared';
 import type { Rng } from '../rng/seeded.js';
 import type { EnemyState } from '../combat/types.js';
 

@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import type { AimState, DungeonLayout, LobbyErrorEvent, PlayerId, RoomCode, PlayerState } from '@veins/shared';
-import { MAX_PLAYERS, MIN_PLAYERS_TO_START as GAME_MIN_PLAYERS, HEX_BOARD_RADIUS, PLAYER_MAX_HP, STARTER_RELICS } from '@veins/shared';
+import type { AimState, DungeonLayout, LobbyErrorEvent, PlayerId, RoomCode, PlayerState } from '@testament/shared';
+import { MAX_PLAYERS, MIN_PLAYERS_TO_START as GAME_MIN_PLAYERS, HEX_BOARD_RADIUS, PLAYER_MAX_HP, STARTER_RELICS } from '@testament/shared';
 
 // Solo play is supported (GAME_MIN_PLAYERS === 1). Set DEV_MIN_PLAYERS higher (e.g. 2)
 // to force co-op-only behaviour for testing.
 const MIN_PLAYERS_TO_START = parseInt(process.env['DEV_MIN_PLAYERS'] ?? String(GAME_MIN_PLAYERS), 10);
-import type { BleedClockTickEvent, RunEndedEvent, FloorAdvancedEvent } from '@veins/shared';
+import type { BleedClockTickEvent, RunEndedEvent, FloorAdvancedEvent } from '@testament/shared';
 import { generateDungeon } from '../dungeon/bsp.js';
 import { isTestArenaEnabled, generateTestArenaDungeon, spawnTestArenaEnemies } from '../dungeon/testArena.js';
 import { buildInitialBoard } from '../board/layout.js';
