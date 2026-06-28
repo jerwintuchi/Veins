@@ -1,11 +1,11 @@
-# Architecture
+# Sign Language
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+The legible sign system: how a hidden Incarnate trait maps to a consistent observable sign server-side, and how the client renders signs while never seeing the underlying traits.
 
 ## Design Philosophy
 

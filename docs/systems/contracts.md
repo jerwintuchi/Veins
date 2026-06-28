@@ -1,11 +1,11 @@
-# Architecture
+# Contracts
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+The contract generator: the orthogonal axes (Target x Site x Condition x Primary Verb x Secondary Objective x Clause) and how partial, sometimes-wrong intel is produced.
 
 ## Design Philosophy
 

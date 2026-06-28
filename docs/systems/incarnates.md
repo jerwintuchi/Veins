@@ -1,11 +1,11 @@
-# Architecture
+# Incarnates
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+The Incarnate model: trait rolls, mutation stacks, behavior, and the set of primary verbs (kill, capture, observe, banish, drive off).
 
 ## Design Philosophy
 

@@ -1,11 +1,11 @@
-# Architecture
+# Transport Migration (Socket.io to raw WS)
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+The transport swap: what changes at the boundary and how SocketIOServerLike is reimplemented over a raw WebSocket (ws) adapter.
 
 ## Design Philosophy
 

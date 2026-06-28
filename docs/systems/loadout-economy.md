@@ -1,11 +1,11 @@
-# Architecture
+# Loadout (Bag) Economy
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+The shared bag: slot budget, the combat-versus-probing tradeoff, and how loadout choices drive role specialization (Pillar 1 meets Pillar 4).
 
 ## Design Philosophy
 

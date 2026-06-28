@@ -1,11 +1,11 @@
-# Architecture
+# Sites and Biomes
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+Catalog of sites and biomes: topology archetypes and their environmental modifiers.
 
 ## Design Philosophy
 

@@ -1,11 +1,11 @@
-# Architecture
+# Distributed Perception
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+The forced-cooperation engine: per-member sign-channels and how perception scales from a solo scholar to a party of four.
 
 ## Design Philosophy
 

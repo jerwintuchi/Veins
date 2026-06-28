@@ -1,11 +1,11 @@
-# Architecture
+# Cooperation and Scaling
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+How the game stays complete at 1, 2, 3, and 4 players: scaling of difficulty, perception, and objectives.
 
 ## Design Philosophy
 

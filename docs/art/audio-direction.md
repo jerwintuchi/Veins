@@ -1,11 +1,11 @@
-# Architecture
+# Audio Direction
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+Liturgical and sacred motifs, diegetic sign-sounds for probe reactions, and how to build tension without a doom clock.
 
 ## Design Philosophy
 

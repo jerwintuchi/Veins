@@ -1,11 +1,11 @@
-# Architecture
+# Godot Client
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+The Godot 4 client: project structure, scenes, HTML5/WASM export, and the WebSocketPeer connection to the server.
 
 ## Design Philosophy
 

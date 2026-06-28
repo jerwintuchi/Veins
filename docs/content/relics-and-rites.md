@@ -1,11 +1,11 @@
-# Architecture
+# Relics and Rites
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+Catalog of relics and rites (combat, probing, ritual) and their combinations within the loadout.
 
 ## Design Philosophy
 

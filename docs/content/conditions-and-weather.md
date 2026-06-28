@@ -1,11 +1,11 @@
-# Architecture
+# Conditions and Weather
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+Catalog of conditions (weather, time, sacred-decay) and their effects on visibility, Incarnate behavior, and rites.
 
 ## Design Philosophy
 

@@ -1,11 +1,11 @@
-# Architecture
+# Incarnate Catalog
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+Data-driven catalog of Incarnates and their trait/sign vocabularies. Designed for hundreds of entries.
 
 ## Design Philosophy
 

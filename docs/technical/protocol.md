@@ -1,11 +1,11 @@
-# Architecture
+# Wire Protocol
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+The language-neutral protocol: the JSON message envelope, the event catalog, and how the GDScript client mirrors the TypeScript server contract.
 
 ## Design Philosophy
 

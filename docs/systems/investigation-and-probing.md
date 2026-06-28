@@ -1,11 +1,11 @@
-# Architecture
+# Investigation and Probing
 
 > **Status:** Placeholder. Scaffolding only, no design committed here yet.
 > **Spine:** Observe -> Hypothesize -> Test -> Record  ·  **Index:** [../README.md](../README.md)
 
 ## Purpose
 
-The authoritative-server architecture, the trust boundary, and the pure-core plus thin-transport pattern carried from the prototype.
+Active investigation as a verb: probe actions, reactions, evidence gathering, and how a theory is confirmed or refuted in the field.
 
 ## Design Philosophy
 
