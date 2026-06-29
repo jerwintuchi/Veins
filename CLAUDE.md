@@ -31,9 +31,12 @@ TypeScript server and the GDScript client both honor the same message shapes.
 
 ## Active Work
 
-Phase: **design bible**. No implementation spec is active yet. Implementation
-follows the bible and the R# → design → T# → test chain below.
+Phase: **Phase 1 — Godot client & transport**. Active spec: the raw WebSocket
+transport (server done; Godot client next).
 
+@specs/raw-ws-transport/requirements.md
+@specs/raw-ws-transport/design.md
+@specs/raw-ws-transport/tasks.md
 @.claude/rules/spec-workflow.md
 @.claude/rules/netcode-invariants.md
 

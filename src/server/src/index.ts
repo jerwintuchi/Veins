@@ -1,49 +1,29 @@
 // Authoritative game server. Thin transport plumbing over the unit-tested core
 // (RoomManager, dungeon generation, movement). Every inbound message is validated;
-// only the server mutates room state (invariants I1, I2).
-//
-// NOTE: still on Socket.io. The raw-WebSocket transport swap (TD-002) is Phase 1
-// of the roadmap; the handler core is kept behind the SocketIOServerLike seam so
-// that swap stays contained.
+// only the server mutates room state (invariants I1, I2). Transport is raw
+// WebSocket with a JSON envelope (TD-002); the handler core stays transport-neutral
+// behind the `ServerHub` seam ([transport/types.ts], [transport/wsHub.ts]).
 import { fileURLToPath } from 'node:url';
-import type { JoinRoomRequest, MovePlayerRequest, RoomSummary, PlayerId, RoomCode } from '@testament/shared';
+import type { JoinRoomRequest, MovePlayerRequest, RoomSummary, PlayerId } from '@testament/shared';
 import { RoomManager } from './room/manager.js';
 import type { Room } from './room/state.js';
 import { buildStateResync } from './room/sync.js';
 import { movePlayer } from './combat/movement.js';
+import type { ServerHub, ServerSocket } from './transport/types.js';
+import { attachWebSocketServer, type WebSocketServerLike } from './transport/wsHub.js';
 
 // How often the server applies movement and broadcasts positions (20Hz / 50ms).
 const MOVEMENT_TICK_MS = 50;
-
-// Minimal socket surface we depend on. Keeping it abstract makes the wiring
-// testable without a live server; the real io is cast to this at the boundary.
-export interface ServerSocket {
-  id: string;
-  data: { playerId?: PlayerId; roomCode?: RoomCode | undefined };
-  // Handshake auth carries the client's stable player id (used for reconnection).
-  handshake?: { auth?: Record<string, unknown> };
-  on(event: string, listener: (payload: unknown) => void): void;
-  emit(event: string, payload: unknown): void;
-  join(room: string): void;
-  leave?(room: string): void;
-}
-export interface RoomEmitter {
-  emit(event: string, payload: unknown): void;
-}
-export interface SocketIOServerLike {
-  on(event: 'connection', listener: (socket: ServerSocket) => void): void;
-  to(room: string): RoomEmitter;
-}
 
 export function summarizeRoom(room: Room): RoomSummary {
   return { code: room.code, status: room.status, hostId: room.hostId, players: room.players };
 }
 
-export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): void {
-  io.on('connection', (socket) => {
-    // Identity comes from the handshake auth (a stable client-held token, used for
-    // reconnection), falling back to any pre-set data id, then the socket id. It is
-    // connection-derived, never a per-message client field (invariant I2).
+export function registerHandlers(io: ServerHub, manager: RoomManager): void {
+  io.on('connection', (socket: ServerSocket) => {
+    // Identity comes from the connection handshake (a stable client-held token,
+    // used for reconnection), falling back to any pre-set data id, then the socket
+    // id. It is connection-derived, never a per-message client field (invariant I2).
     const authId = typeof socket.handshake?.auth?.['playerId'] === 'string'
       ? (socket.handshake.auth['playerId'] as PlayerId)
       : undefined;
@@ -162,7 +142,7 @@ export function registerHandlers(io: SocketIOServerLike, manager: RoomManager): 
 
 // One movement step across all active rooms: apply each player's stored input and
 // broadcast new positions. Exported so the loop can be driven in tests.
-export function runMovementTick(io: SocketIOServerLike, manager: RoomManager, deltaSeconds: number): void {
+export function runMovementTick(io: ServerHub, manager: RoomManager, deltaSeconds: number): void {
   for (const room of manager.activeRooms()) {
     if (!room.dungeon) continue;
     for (const pid of room.players) {
@@ -180,14 +160,12 @@ export function runMovementTick(io: SocketIOServerLike, manager: RoomManager, de
 
 // Production bootstrap. Imported lazily so tests never open a port.
 export async function startServer(port: number): Promise<void> {
-  const { Server } = await import('socket.io');
-  const io = new Server(port, { cors: { origin: '*' } });
+  const { WebSocketServer } = await import('ws');
+  const wss = new WebSocketServer({ port });
+  const hub = attachWebSocketServer(wss as unknown as WebSocketServerLike);
   const manager = new RoomManager();
-  // socket.io's Server is structurally richer than SocketIOServerLike; cast at
-  // this single boundary so the handler logic stays transport-agnostic.
-  const ioLike = io as unknown as SocketIOServerLike;
-  registerHandlers(ioLike, manager);
-  setInterval(() => runMovementTick(ioLike, manager, MOVEMENT_TICK_MS / 1000), MOVEMENT_TICK_MS);
+  registerHandlers(hub, manager);
+  setInterval(() => runMovementTick(hub, manager, MOVEMENT_TICK_MS / 1000), MOVEMENT_TICK_MS);
   // eslint-disable-next-line no-console
   console.log(`Testament server listening on :${port}`);
 }
