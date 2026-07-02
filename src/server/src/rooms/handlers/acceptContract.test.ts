@@ -53,7 +53,7 @@ describe('handleAcceptContract', () => {
     const { mgr, store } = setup();
     // Manually add a second player
     const room = mgr.getRoomBySocketId('host')!;
-    room.players.push({ playerId: 'p2', displayName: 'P2', socketId: 'p2-sock', isLeader: false, readyState: true, disconnectedAt: null });
+    room.players.push({ playerId: 'p2', displayName: 'P2', socketId: 'p2-sock', isLeader: false, readyState: true, disconnectedAt: null, perceivedChannels: [] });
     const { fn: emit, calls } = makeEmit();
     handleAcceptContract('p2-sock', mgr, emit, () => {});
     expect((calls[0]?.[1] as { code: string }).code).toBe('NOT_LEADER');

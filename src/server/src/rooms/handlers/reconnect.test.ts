@@ -56,6 +56,38 @@ describe('handleReconnect', () => {
     expect((resync?.[1] as { fieldSnapshot: unknown }).fieldSnapshot).toBeNull();
   });
 
+  // T66: perception survives reconnection (R63, P29)
+
+  it('a reconnecting player keeps the same perceivedChannels and gets a filtered snapshot', () => {
+    const { mgr, store, archive, token } = setup();
+    const room = mgr.getRoomBySocketId('host')!;
+    room.phase = 'FIELD';
+    room.contract = {
+      contractId: 'c-001', tier: 'JOURNEYMAN',
+      targetName: 'T', siteName: 'S', primaryVerb: 'INVESTIGATE',
+      expeditionSeed: 'seed-1',
+      traitRoll: { aspect: 'EMBER', frailty: 'FLAME', tell: 'LUNGE', ward: 'COLD', disposition: 'STALKER' },
+    };
+    room.fieldData = { fieldId: 'FIELD-001', siteName: 'S', incarnateName: 'T' };
+    room.players[0]!.perceivedChannels = ['RESIDUE', 'REACTION'];
+    room.revealedSigns = [{ channel: 'REACTION', token: 'drinks-cold' }];
+    room.players[0]!.socketId = '';
+    room.players[0]!.disconnectedAt = Date.now();
+
+    const { fn: emit, calls } = makeEmit();
+    handleReconnect('host-new', { token }, mgr, store, archive, emit, () => {});
+
+    // The set is identical after reconnect (P29) and the snapshot is filtered to it (P28).
+    expect(room.players[0]!.perceivedChannels).toEqual(['RESIDUE', 'REACTION']);
+    const resync = calls.find(([t]) => t === 'STATE_RESYNC');
+    const fs = (resync?.[1] as { fieldSnapshot: { signs: Array<{ channel: string; token: string }>; perceivedChannels: string[] } }).fieldSnapshot;
+    expect(fs.perceivedChannels).toEqual(['RESIDUE', 'REACTION']);
+    expect(fs.signs).toEqual([
+      { channel: 'RESIDUE',  token: 'scorched-wax' },
+      { channel: 'REACTION', token: 'drinks-cold' },
+    ]);
+  });
+
   it('emits LOBBY_ERROR TOKEN_NOT_FOUND for an unknown token', () => {
     const { fn: emit, calls } = makeEmit();
     handleReconnect('sock', { token: 'bad-token' }, new RoomManager(), new ReconnectTokenStore(), new SessionArchive(), emit, () => {});

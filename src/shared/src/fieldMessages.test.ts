@@ -13,11 +13,12 @@ import type { StubTestament, StubArchiveEntry } from './fieldPhase.js';
 // T25: field-phase wire-payload types
 
 describe('FieldStartedPayload', () => {
-  it('has fieldData, reconnectToken, and signs (R49/R52)', () => {
+  it('has fieldData, reconnectToken, signs, and perceivedChannels (R49/R52/R59)', () => {
     const payload: FieldStartedPayload = {
-      fieldData:      { fieldId: 'FIELD-001', siteName: 'Site', incarnateName: 'Target' },
-      reconnectToken: 'some-uuid',
-      signs:          [{ channel: 'RESIDUE', token: 'scorched-wax' }],
+      fieldData:         { fieldId: 'FIELD-001', siteName: 'Site', incarnateName: 'Target' },
+      reconnectToken:    'some-uuid',
+      signs:             [{ channel: 'RESIDUE', token: 'scorched-wax' }],
+      perceivedChannels: ['RESIDUE', 'OMEN'],
     };
     expect(typeof payload.reconnectToken).toBe('string');
     expect(payload.fieldData.fieldId).toBe('FIELD-001');
@@ -25,6 +26,7 @@ describe('FieldStartedPayload', () => {
     expect(payload.signs[0]?.channel).toBe('RESIDUE');
     // signs elements must not carry trait data
     expect(Object.keys(payload.signs[0]!).sort()).toEqual(['channel', 'token']);
+    expect(payload.perceivedChannels).toContain('RESIDUE');
   });
 });
 
@@ -86,10 +88,21 @@ describe('ProbeResultPayload', () => {
       exposure: 1,
     };
     expect(Object.keys(payload).sort()).toEqual(['exposure', 'playerId', 'sign', 'stimulus']);
-    expect(Object.keys(payload.sign).sort()).toEqual(['channel', 'token']);
+    expect(Object.keys(payload.sign!).sort()).toEqual(['channel', 'token']);
     const json = JSON.stringify(payload);
     expect(json).not.toContain('traitRoll');
     expect(json).not.toContain('ward');
     expect(json).not.toContain('expeditionSeed');
+  });
+
+  it('accepts sign: null for a player who cannot read the REACTION channel (R59)', () => {
+    const payload: ProbeResultPayload = {
+      playerId: 'player-1',
+      stimulus: 'COLD',
+      sign:     null,
+      exposure: 1,
+    };
+    expect(payload.sign).toBeNull();
+    expect(payload.exposure).toBe(1);
   });
 });

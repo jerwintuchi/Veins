@@ -64,7 +64,7 @@ export function routeMessage(
       handleExtract(socketId, roomManager, sessionArchive, emit, broadcast);
       break;
     case 'PROBE':
-      handleProbe(socketId, payload, roomManager, emit, broadcast);
+      handleProbe(socketId, payload, roomManager, emit, emitTo);
       break;
     default:
       handleUnknownMessage(socketId, type, emit);

@@ -48,6 +48,7 @@ export function handleJoinRoom(
     isLeader: false,
     readyState: false,
     disconnectedAt: null,
+    perceivedChannels: [],
   };
   room.players.push(player);
 

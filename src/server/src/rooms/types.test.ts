@@ -13,7 +13,7 @@ describe('ServerPlayerEntry', () => {
       socketId: 'sock-1',
       isLeader: true,
       readyState: false,
-      disconnectedAt: null,
+      disconnectedAt: null, perceivedChannels: [],
     };
     expect(entry.socketId).toBe('sock-1');
     expect(entry.disconnectedAt).toBeNull();
@@ -28,7 +28,7 @@ describe('toPublicPlayer', () => {
       socketId: 'sock-1',
       isLeader: true,
       readyState: false,
-      disconnectedAt: 1234567890,
+      disconnectedAt: 1234567890, perceivedChannels: [],
     };
     const pub: LobbyPlayer = toPublicPlayer(entry);
     expect(pub.playerId).toBe('p1');
@@ -58,7 +58,7 @@ describe('RoomRecord shape', () => {
   it('fieldData is absent from LobbyPlayer (server-only field)', () => {
     const entry: ServerPlayerEntry = {
       playerId: 'p1', displayName: 'Aldric', socketId: 's1',
-      isLeader: true, readyState: false, disconnectedAt: null,
+      isLeader: true, readyState: false, disconnectedAt: null, perceivedChannels: [],
     };
     const pub = toPublicPlayer(entry);
     expect('fieldData' in pub).toBe(false);

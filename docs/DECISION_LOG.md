@@ -484,3 +484,31 @@ skeleton; both packages type-check clean and tests pass. `PlayerId` moved to
 references remain in `src/`; the only ones left are the historical entries in this
 append-only log (TD-001..002), which document the reboot itself. Git history
 preserves everything removed.
+
+## TD-026 — Phase 4 spec 5: Distributed Perception (2026-07-02)
+
+**Decision.** Perception is now per-player (specs/distributed-perception, T62–T67):
+at DEPLOY the server assigns each Seeker a perception set (`ServerPlayerEntry.
+perceivedChannels`) and every sign delivery is filtered to it — `FIELD_STARTED`
+ambient signs, `PROBE_RESULT` reactions, and the reconnect `FieldSnapshot`. Each
+player also learns their own set (`perceivedChannels` on those payloads), never
+other players' sets. `ProbeResultPayload.sign` is now `Sign | null`: everyone sees
+who probed, with what, and the exposure cost, but only REACTION perceivers read
+the response — including the prober, who may have rung the bell blind.
+
+**Context.** Pillar 4 requires cooperation to be structural: evidence is
+distributed, so the theory can only be assembled by talking
+(docs/systems/distributed-perception.md). The design doc ties assignment to the
+loadout, which is a later spec, so this spec ships an interim deterministic
+assignment: channels relevant to the contract tier (ambient channels + REACTION)
+are shuffled with a seeded rng (`hashSeed(expeditionSeed + ':perception')` — a
+domain-suffixed sub-seed, I3), dealt round-robin, then topped up so every Seeker
+reads at least 2 channels. Solo perceives everything (TD-008: never lacking).
+
+**Consequences.** Filtering is information security, not UI hiding: a client never
+receives what its player cannot perceive (I5). The union of the party's sets always
+covers the tier's channels, so a full read stays assemblable. Assignment is keyed
+to playerId and survives reconnection; a non-REACTION perceiver does not recover
+revealed reaction signs on resync. When the loadout economy lands it replaces the
+assignment source only — the filtering machinery stays. All 347 tests green
+(44 shared + 303 server); both packages typecheck clean.

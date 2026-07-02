@@ -54,15 +54,17 @@ describe('StubArchiveEntry.outcome', () => {
 });
 
 describe('FieldSnapshot shape', () => {
-  it('has fieldData, archiveEntries, and signs (R51/R52)', () => {
+  it('has fieldData, archiveEntries, signs, and perceivedChannels (R51/R52/R59)', () => {
     const snap: FieldSnapshot = {
-      fieldData:      { fieldId: 'FIELD-001', siteName: 'Site', incarnateName: 'Target' },
-      archiveEntries: [],
-      signs:          [{ channel: 'OMEN', token: 'full-body-tremor' }],
+      fieldData:         { fieldId: 'FIELD-001', siteName: 'Site', incarnateName: 'Target' },
+      archiveEntries:    [],
+      signs:             [{ channel: 'OMEN', token: 'full-body-tremor' }],
+      perceivedChannels: ['OMEN', 'RESIDUE'],
     };
     expect(snap.fieldData.fieldId).toBe('FIELD-001');
     expect(snap.archiveEntries).toHaveLength(0);
     expect(snap.signs[0]?.channel).toBe('OMEN');
     expect(Object.keys(snap.signs[0]!).sort()).toEqual(['channel', 'token']);
+    expect(snap.perceivedChannels).toContain('OMEN');
   });
 });

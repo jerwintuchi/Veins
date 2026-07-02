@@ -10,7 +10,7 @@ function makeEmit(): { fn: EmitFn; calls: Array<[string, unknown]> } {
 function makeRoom(phase: RoomRecord['phase'] = 'DEPLOYING'): RoomRecord {
   const p: ServerPlayerEntry = {
     playerId: 'p1', displayName: 'A', socketId: 's1',
-    isLeader: true, readyState: false, disconnectedAt: null,
+    isLeader: true, readyState: false, disconnectedAt: null, perceivedChannels: [],
   };
   return { code: 'ABC123', phase, players: [p], contract: null, fieldData: null, exposure: 0, revealedSigns: [] };
 }

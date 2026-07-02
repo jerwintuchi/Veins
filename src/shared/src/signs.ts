@@ -6,6 +6,10 @@ export type Channel =
   | 'LITURGY'       // RiteKey axis — sigils and devotional resonance
   | 'OMEN';         // Tell axis    — wind-up cue before lethal strike
 
+// Canonical channel order, used wherever a stable ordering is needed.
+export const CHANNELS: ReadonlyArray<Channel> =
+  ['RESIDUE', 'STRESS_MARK', 'REACTION', 'SPOOR', 'LITURGY', 'OMEN'];
+
 export type SignToken = string;
 
 export type Sign = {

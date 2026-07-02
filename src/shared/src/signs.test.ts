@@ -2,7 +2,7 @@
 // T54: Stimulus + STIMULI (probe-handler spec, R53)
 import { describe, it, expect } from 'vitest';
 import type { Channel, Sign, Tier, SignToken, Stimulus } from './signs.js';
-import { STIMULI } from './signs.js';
+import { STIMULI, CHANNELS } from './signs.js';
 
 // T39(a): Channel is a union of exactly 6 literals.
 function assertChannelExhaustive(c: Channel): string {
@@ -49,6 +49,13 @@ describe('Channel', () => {
     expect(channels).toHaveLength(6);
     // Exhaustive switch compiles — checked statically above.
     channels.forEach(c => expect(assertChannelExhaustive(c)).toBe(c));
+  });
+});
+
+describe('CHANNELS (T62, R59)', () => {
+  it('lists all six channels exactly once, in canonical order', () => {
+    expect(CHANNELS).toEqual(['RESIDUE', 'STRESS_MARK', 'REACTION', 'SPOOR', 'LITURGY', 'OMEN']);
+    expect(new Set(CHANNELS).size).toBe(6);
   });
 });
 

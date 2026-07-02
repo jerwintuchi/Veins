@@ -1,5 +1,5 @@
 // Server-only room types. Never exported from @testament/shared (I4).
-import type { RoomCode, RoomPhase, LobbyPlayer, StubFieldData, Sign } from '@testament/shared';
+import type { RoomCode, RoomPhase, LobbyPlayer, StubFieldData, Sign, Channel } from '@testament/shared';
 import type { ContractRecord } from '../incarnate/contractRecord.js';
 
 export type { RoomCode };
@@ -11,6 +11,9 @@ export type ServerPlayerEntry = {
   isLeader: boolean;
   readyState: boolean;
   disconnectedAt: number | null;
+  // Distributed Perception (R61): empty until DEPLOY assigns. Keyed to the
+  // player entry (playerId), not the socket, so it survives reconnection (R63).
+  perceivedChannels: Channel[];
 };
 
 export type RoomRecord = {

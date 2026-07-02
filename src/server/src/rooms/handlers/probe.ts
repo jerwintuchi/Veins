@@ -1,7 +1,7 @@
 import type { Stimulus, ProbeResultPayload } from '@testament/shared';
 import { STIMULI } from '@testament/shared';
 import type { RoomManager } from '../RoomManager.js';
-import type { EmitFn, BroadcastFn } from '../types.js';
+import type { EmitFn, EmitToFn } from '../types.js';
 import { assertPhase } from '../phaseGuard.js';
 import { deriveReaction, PROBE_EXPOSURE_COST } from '../../incarnate/deriveReaction.js';
 
@@ -10,7 +10,7 @@ export function handleProbe(
   payload: unknown,
   roomManager: RoomManager,
   emit: EmitFn,
-  broadcast: BroadcastFn,
+  emitTo: EmitToFn,
 ): void {
   const p = payload as Record<string, unknown> | null;
   const stimulus = p !== null && typeof p === 'object' ? p['stimulus'] : undefined;
@@ -34,11 +34,15 @@ export function handleProbe(
     room.revealedSigns.push(sign);
   }
 
-  const result: ProbeResultPayload = {
-    playerId: sender.playerId,
-    stimulus: stimulus as Stimulus,
-    sign,
-    exposure: room.exposure,
-  };
-  broadcast(room.code, 'PROBE_RESULT', result);
+  // Per-player delivery (R62): the probe itself is visible party behavior, but
+  // only REACTION perceivers can read the response — including the prober.
+  for (const player of room.players) {
+    const result: ProbeResultPayload = {
+      playerId: sender.playerId,
+      stimulus: stimulus as Stimulus,
+      sign:     player.perceivedChannels.includes('REACTION') ? sign : null,
+      exposure: room.exposure,
+    };
+    emitTo(player.socketId, 'PROBE_RESULT', result);
+  }
 }

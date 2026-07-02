@@ -95,6 +95,7 @@ describe('StateResyncPayload shape', () => {
       fieldData: { fieldId: 'FIELD-001', siteName: 'Site', incarnateName: 'Target' },
       archiveEntries: [],
       signs: [],
+      perceivedChannels: [],
     };
     const payload: StateResyncPayload = {
       snapshot: {

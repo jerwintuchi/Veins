@@ -166,19 +166,26 @@ describe('T38: field-phase integration — Scenario A (happy path)', () => {
     expect(fs1.type).toBe('FIELD_STARTED');
     expect(fs2.type).toBe('FIELD_STARTED');
 
-    // FIELD_STARTED must carry fieldData, reconnectToken, signs — no traitRoll (R49/R50/T53).
+    // FIELD_STARTED must carry fieldData, reconnectToken, signs, perceivedChannels —
+    // no traitRoll (R49/R50/T53). With 2 players, signs are per-player filtered (R61).
     const fsPayload = fs1.payload as {
       fieldData: Record<string, unknown>;
       reconnectToken: string;
       signs: Array<{ channel: string; token: string }>;
+      perceivedChannels: string[];
     };
     expect(typeof fsPayload.reconnectToken).toBe('string');
     expect(Object.keys(fsPayload.fieldData)).not.toContain('traitRoll');
     expect(Array.isArray(fsPayload.signs)).toBe(true);
-    expect(fsPayload.signs.length).toBe(3);  // Apprentice tier
+    expect(fsPayload.perceivedChannels.length).toBeGreaterThanOrEqual(2);
     for (const s of fsPayload.signs) {
       expect(Object.keys(s).sort()).toEqual(['channel', 'token']);
+      expect(fsPayload.perceivedChannels).toContain(s.channel);  // P28
     }
+    // The two players' sets cover the Apprentice tier channels together (P26).
+    const fs2Payload = fs2.payload as { perceivedChannels: string[] };
+    const union = new Set([...fsPayload.perceivedChannels, ...fs2Payload.perceivedChannels]);
+    expect([...union].sort()).toEqual(['OMEN', 'REACTION', 'RESIDUE', 'STRESS_MARK']);
     expect(Object.keys(fsPayload)).not.toContain('traitRoll');
     expect(Object.keys(fsPayload)).not.toContain('expeditionSeed');
 
@@ -326,15 +333,21 @@ describe('T38: field-phase integration — Scenario C (reconnect during FIELD)',
       fieldSnapshot: {
         fieldData: { incarnateName: string };
         signs: Array<{ channel: string; token: string }>;
+        perceivedChannels: string[];
       } | null;
     }).fieldSnapshot;
     expect(fs).not.toBeNull();
     expect(typeof fs?.fieldData.incarnateName).toBe('string');
     expect(fs?.fieldData.incarnateName.length).toBeGreaterThan(0);
-    // Reconnect path includes signs (R51/T53).
+    // Reconnect path includes signs filtered to the player's channels (R51/T53/R63).
     expect(Array.isArray(fs?.signs)).toBe(true);
-    expect(fs!.signs.length).toBe(3);  // Apprentice tier
-    expect(fs!.signs.map(s => s.channel)).toEqual(['RESIDUE', 'STRESS_MARK', 'OMEN']);
+    expect(fs!.perceivedChannels.length).toBeGreaterThanOrEqual(2);
+    for (const s of fs!.signs) {
+      expect(fs!.perceivedChannels).toContain(s.channel);  // P28
+    }
+    // The host's snapshot signs match their FIELD_STARTED delivery (same filter).
+    const originalSigns = (hostFieldStarted.payload as { signs: Array<{ channel: string }> }).signs;
+    expect(fs!.signs).toEqual(originalSigns);
 
     // p2 gets LOBBY_UPDATED when host reconnects.
     const p2Update = await p2.next();
@@ -383,41 +396,57 @@ describe('T61: probe integration — miss, match, reconnect, extraction', () => 
     const hostFieldStarted = await host.next();
     await p2.next();
 
-    // Ambient signs are probe-gated: 4 signs at Journeyman, no REACTION (P22).
-    const fsSigns = (hostFieldStarted.payload as { signs: Array<{ channel: string }> }).signs;
-    expect(fsSigns.map(s => s.channel)).toEqual(['RESIDUE', 'STRESS_MARK', 'OMEN', 'SPOOR']);
-    const hostToken = (hostFieldStarted.payload as { reconnectToken: string }).reconnectToken;
+    // Ambient signs are probe-gated and per-player filtered (P22, P28, R61).
+    const fsPayload = hostFieldStarted.payload as {
+      signs: Array<{ channel: string }>;
+      perceivedChannels: string[];
+      reconnectToken: string;
+    };
+    expect(fsPayload.signs.every(s => s.channel !== 'REACTION')).toBe(true);
+    for (const s of fsPayload.signs) {
+      expect(fsPayload.perceivedChannels).toContain(s.channel);
+    }
+    const hostToken = fsPayload.reconnectToken;
 
-    // 1. Non-leader probes a miss: no-reaction, exposure 1, broadcast to both.
+    // Pin the perception split for deterministic probe reads (T67, R62):
+    // host cannot read REACTION; p2 can.
+    room.players[0]!.perceivedChannels = ['RESIDUE', 'STRESS_MARK', 'SPOOR', 'OMEN'];
+    room.players[1]!.perceivedChannels = ['REACTION', 'SPOOR'];
+
+    // 1. Non-leader probes a miss: everyone sees the probe, only p2 reads the response.
     p2.send('PROBE', { stimulus: 'FLAME' });
     const miss1 = await host.next();
     const miss2 = await p2.next();
     expect(miss1.type).toBe('PROBE_RESULT');
     expect(miss2.type).toBe('PROBE_RESULT');
-    const missPayload = miss1.payload as {
-      playerId: string; stimulus: string; sign: { channel: string; token: string }; exposure: number;
+    const missHost = miss1.payload as {
+      playerId: string; stimulus: string; sign: { channel: string; token: string } | null; exposure: number;
     };
-    expect(missPayload.stimulus).toBe('FLAME');
-    expect(missPayload.sign).toEqual({ channel: 'REACTION', token: 'no-reaction' });
-    expect(missPayload.exposure).toBe(1);
+    const missP2 = miss2.payload as typeof missHost;
+    expect(missHost.stimulus).toBe('FLAME');
+    expect(missHost.sign).toBeNull();  // host cannot read REACTION (R62)
+    expect(missHost.exposure).toBe(1);
+    expect(missP2.sign).toEqual({ channel: 'REACTION', token: 'no-reaction' });
+    expect(missP2.exposure).toBe(1);
     // A miss betrays nothing about the actual ward (R56, P21).
-    const missJson = JSON.stringify(miss1.payload);
+    const missJson = JSON.stringify(miss2.payload);
     expect(missJson).not.toContain('COLD');
     expect(missJson).not.toContain('traitRoll');
     expect(missJson).not.toContain('expeditionSeed');
     expect(missJson).not.toContain('"ward"');
 
-    // 2. Leader probes the match: drinks-cold, exposure 2.
+    // 2. Leader probes the match: the prober rang the bell blind — only p2 reads drinks-cold.
     host.send('PROBE', { stimulus: 'COLD' });
     const match1 = await host.next();
-    await p2.next();
-    const matchPayload = match1.payload as {
-      sign: { channel: string; token: string }; exposure: number;
-    };
-    expect(matchPayload.sign).toEqual({ channel: 'REACTION', token: 'drinks-cold' });
-    expect(matchPayload.exposure).toBe(2);
+    const match2 = await p2.next();
+    const matchHost = match1.payload as { sign: unknown; exposure: number };
+    const matchP2 = match2.payload as { sign: { channel: string; token: string } | null; exposure: number };
+    expect(matchHost.sign).toBeNull();
+    expect(matchHost.exposure).toBe(2);
+    expect(matchP2.sign).toEqual({ channel: 'REACTION', token: 'drinks-cold' });
 
-    // 3. Host reconnects: snapshot carries ambient + both revealed reaction signs (P24).
+    // 3. Host reconnects: snapshot is filtered to the host's set — same channels as
+    // before the disconnect (P29), no revealed REACTION signs for a non-perceiver (R63).
     host.close();
     await new Promise(r => setTimeout(r, 60));
     await p2.next(); // LOBBY_UPDATED (disconnect broadcast)
@@ -426,13 +455,12 @@ describe('T61: probe integration — miss, match, reconnect, extraction', () => 
     hostNew.send('RECONNECT', { token: hostToken });
     const resync = await hostNew.next();
     expect(resync.type).toBe('STATE_RESYNC');
-    const snapSigns = (resync.payload as {
-      fieldSnapshot: { signs: Array<{ channel: string; token: string }> };
-    }).fieldSnapshot.signs;
-    expect(snapSigns.map(s => s.channel)).toEqual(
-      ['RESIDUE', 'STRESS_MARK', 'OMEN', 'SPOOR', 'REACTION', 'REACTION'],
-    );
-    expect(snapSigns.slice(4).map(s => s.token)).toEqual(['no-reaction', 'drinks-cold']);
+    const snap = (resync.payload as {
+      fieldSnapshot: { signs: Array<{ channel: string; token: string }>; perceivedChannels: string[] };
+    }).fieldSnapshot;
+    expect(snap.perceivedChannels).toEqual(['RESIDUE', 'STRESS_MARK', 'SPOOR', 'OMEN']);
+    expect(snap.signs.map(s => s.channel)).toEqual(['RESIDUE', 'STRESS_MARK', 'OMEN', 'SPOOR']);
+    expect(snap.signs.every(s => s.channel !== 'REACTION')).toBe(true);
     await p2.next();      // LOBBY_UPDATED (reconnect broadcast)
     await hostNew.next(); // LOBBY_UPDATED (reconnect broadcast also reaches the reconnecting socket)
 

@@ -46,7 +46,7 @@ export function handleReconnect(
   const newToken = tokenStore.issue(player.playerId, room.code);
   emit('STATE_RESYNC', {
     snapshot: toSnapshot(room),
-    fieldSnapshot: buildFieldSnapshot(room, sessionArchive),
+    fieldSnapshot: buildFieldSnapshot(room, sessionArchive, player.playerId),
     reconnectToken: newToken,
   });
   broadcast(room.code, 'LOBBY_UPDATED', { snapshot: toSnapshot(room) });
