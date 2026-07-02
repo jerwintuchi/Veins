@@ -1,6 +1,7 @@
 // Lobby + room types and constants. Types/constants only (invariant I4).
 import type { PlayerId, RelicBoard, SynergyMap } from './board.js';
 import type { DungeonLayout } from './dungeon.js';
+import type { ContractIntel } from './contract.js';
 
 export const MAX_PLAYERS = 4;
 // Solo play is supported: a lone host can start a run (synergy relaxes for solo
@@ -10,6 +11,31 @@ export const HEX_BOARD_RADIUS = 2; // radius-2 hexagon = 19 cells
 
 export type RoomCode = string;
 export type RoomStatus = 'lobby' | 'in-progress' | 'ended';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Testament Phase 3 — Lobby & Room (specs/lobby-room)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const MAX_ROOM_PLAYERS = 4;
+export const ROOM_CODE_LENGTH = 6;
+// No I, O, 0, 1 to avoid visual ambiguity when sharing codes verbally.
+export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+export type RoomPhase = 'WAITING' | 'DEPLOYING' | 'FIELD' | 'COMPLETE';
+
+export type LobbyPlayer = {
+  playerId: string;
+  displayName: string;
+  isLeader: boolean;
+  readyState: boolean;
+};
+
+export type LobbySnapshot = {
+  roomCode: RoomCode;
+  phase: RoomPhase;
+  players: LobbyPlayer[];
+  contract: ContractIntel | null;
+};
 
 export type RoomSummary = {
   code: RoomCode;

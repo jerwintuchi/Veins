@@ -32,8 +32,13 @@ TypeScript server and the GDScript client both honor the same message shapes.
 
 ## Active Work
 
-Phase: **design bible**. No implementation spec is active yet. Implementation
-follows the bible and the R# → design → T# → test chain below.
+Phase: **Phase 4 — Core systems v1**. Next spec: Distributed Perception (spec 5).
+
+Completed Phase 4 specs:
+- `specs/incarnate-signs/` (T39–T44): TraitRoll, SIGN_LEXICON, deriveSigns, generateTraitRoll
+- `specs/contract-generation/` (T45–T49): ContractRecord, generateContract, ContractIntel wire type
+- `specs/ambient-signs/` (T50–T53): signs in FIELD_STARTED and FieldSnapshot (reconnect)
+- `specs/probe-handler/` (T54–T61): PROBE intent, deriveReaction, exposure, probe-gated REACTION channel
 
 @.claude/rules/spec-workflow.md
 @.claude/rules/netcode-invariants.md
