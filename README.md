@@ -39,13 +39,11 @@ only classification from observable facts.
 4. Cooperation is the primary pillar (solo supported, never the center).
 5. Every expedition becomes another Testament.
 
-## Lineage
+## Foundations
 
-Testament is built on the technical foundations of the **Veins** prototype: an
-authoritative Node server, ephemeral in-memory rooms, a 20Hz tick, seeded procedural
-generation, and a strict client/server trust boundary. That technology is kept; the
-Veins game design is retired. The prototype's documents live in
-[docs/archive/veins/](docs/archive/veins/).
+An authoritative Node server (ephemeral in-memory rooms, a 20Hz tick, seeded
+procedural generation, a strict client/server trust boundary) with a Godot client.
+The design and decision history live in [docs/](docs/README.md).
 
 ## Design bible
 

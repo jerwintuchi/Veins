@@ -47,7 +47,7 @@ partial knowledge enters the session Archive (Pillar 5). No expedition is ever w
 
 ## Implementation Notes
 
-- **Data shape:** a per-room `pressure` value advanced by *events* (a probe, an attack, a noisy action, a decay tick), not a fixed time drain. This is explicitly **not** the retired Veins Bleed Clock.
+- **Data shape:** a per-room `pressure` value advanced by *events* (a probe, an attack, a noisy action, a decay tick), not a fixed time drain. It is explicitly **not** a global doom clock that ticks down while you think.
 - **Thresholds** trigger escalations (raise Incarnate awareness, spawn reinforcements, close a route). The escalation ladder is open tuning.
 - **Extraction** is a leave action from the Extraction node ([spatial vocabulary, TD-018]). **Recant** forfeits the Surety. Expedition end (success, Recant, or wipe) appends a Field Testament.
 - Reuses the room/tick lifecycle; the pressure model is new.

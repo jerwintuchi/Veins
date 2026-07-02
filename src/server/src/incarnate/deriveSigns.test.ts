@@ -73,7 +73,7 @@ describe('deriveSigns', () => {
   });
 
   it('throws a descriptive error when a lexicon entry is missing', () => {
-    const badRoll = { aspect: 'INVALID' as 'EMBER', frailty: 'FLAME', tell: 'LUNGE' };
+    const badRoll: TraitRoll = { aspect: 'INVALID' as 'EMBER', frailty: 'FLAME', tell: 'LUNGE' };
     expect(() => deriveSigns(badRoll, 'APPRENTICE')).toThrow(/lexicon missing entry/);
   });
 });

@@ -1,13 +1,11 @@
-// Lobby + room types and constants. Types/constants only (invariant I4).
-import type { PlayerId, RelicBoard, SynergyMap } from './board.js';
-import type { DungeonLayout } from './dungeon.js';
+// Lobby and room types and constants. Types/constants only (invariant I4).
+import type { PlayerId } from './ids.js';
 import type { ContractIntel } from './contract.js';
 
 export const MAX_PLAYERS = 4;
-// Solo play is supported: a lone host can start a run (synergy relaxes for solo
-// boards — see specs/solo-play). Set DEV_MIN_PLAYERS higher to force co-op-only.
+// Solo play is supported: a lone host can start a run. Set DEV_MIN_PLAYERS higher
+// (server-side) to force co-op-only behaviour for testing.
 export const MIN_PLAYERS_TO_START = 1;
-export const HEX_BOARD_RADIUS = 2; // radius-2 hexagon = 19 cells
 
 export type RoomCode = string;
 export type RoomStatus = 'lobby' | 'in-progress' | 'ended';
@@ -49,12 +47,6 @@ export type JoinRoomRequest = { code: RoomCode; playerId: PlayerId };
 
 // Server -> client / room
 export type RoomUpdateEvent = { room: RoomSummary };
-
-export type RunStartedEvent = {
-  dungeon: DungeonLayout;
-  board: RelicBoard;
-  synergyMap: SynergyMap;
-};
 
 export type LobbyErrorEvent = {
   code:

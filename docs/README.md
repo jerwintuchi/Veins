@@ -32,7 +32,7 @@ Future Expansion**, so a reader can open exactly the layer they need.
 |------|-----------------|--------|
 | [vision.md](vision.md) | The constitution: pillars, spine, what every feature answers to | drafted |
 | [gameplay.md](gameplay.md) | The expedition loop end to end: contract, prep, field, archive | drafted |
-| [technical.md](technical.md) | Stack, transport, the kept-vs-retired ledger, the directory hierarchy | drafted |
+| [technical.md](technical.md) | Stack, transport, the directory hierarchy | drafted |
 | [ROADMAP.md](ROADMAP.md) | The gated phases from rebooted repo to a playable slice | drafted |
 | [GLOSSARY.md](GLOSSARY.md) | Canonical terms, used exactly as written | drafted |
 | [DECISION_LOG.md](DECISION_LOG.md) | Append-only record of why the game is the way it is | drafted |
@@ -44,14 +44,5 @@ Future Expansion**, so a reader can open exactly the layer they need.
 - [systems/](systems/) — one doc per gameplay system (contracts, sign language, probing, loadout, perception, incarnates, combat, pressure, archive, scaling).
 - [content/](content/) — data-driven catalogs (incarnates, sites, conditions, relics and rites, mutations, objectives and clauses).
 - [lore/](lore/) — fiction deep-dives (collegium, choirs, cosmology, bestiary).
-- [technical/](technical/) — architecture, protocol, [migration plan](technical/migration-plan.md), transport, determinism, persistence, Godot client, code map.
+- [technical/](technical/) — architecture, protocol, transport, determinism, persistence, Godot client, code map.
 - [art/](art/) — visual style guide and audio direction.
-
-## Lineage
-
-Testament is built on the technical foundations of the **Veins prototype**: an
-authoritative Node server, ephemeral in-memory rooms, a 20Hz combat tick, seeded
-procedural generation, and a strict client/server trust boundary. That technology
-is kept. The Veins *game design* (the Circulatory Board, the Bleed Clock, the
-doctrine system) is retired. The prototype's documents are preserved unaltered in
-[archive/veins/](archive/veins/) for reference.

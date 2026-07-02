@@ -2,7 +2,7 @@
 
 > **Status:** Living document. Phases are gated; each gate must be green before the
 > next begins. **Gameplay implementation does not start until Phase 2 completes.**
-> **See also:** [README.md](README.md) · [technical/migration-plan.md](technical/migration-plan.md)
+> **See also:** [README.md](README.md)
 
 ## Purpose
 
@@ -21,24 +21,24 @@ are settled, and so every phase has a clear exit gate.
 
 ## Phases
 
-### Phase 0 — Architecture & Documentation (current)
-- **Goal:** a ratified design bible and a clear migration plan.
-- **Deliverables:** the bible (`docs/`), the audit and [migration plan](technical/migration-plan.md), the proposed directory hierarchy, doc placeholders, this roadmap.
-- **Open before exit:** the lore metaphysics (what an Incarnate is, why the Collegium hunts, the state of the divine); fill `lore.md` and `lore/`.
-- **Exit gate:** the user ratifies the bible; lore overview written.
+### Phase 0 — Architecture & Documentation (done)
+- **Goal:** a ratified design bible.
+- **Delivered:** the bible (`docs/`), the directory hierarchy, the full system specs,
+  the lore metaphysics, and the decision log (TD-001..018).
+- **Also done:** the repo is renamed to Testament, the prototype client and game rules
+  are removed, and the server is a clean lobby + rooms + movement skeleton (TD-019).
 
-### Phase 1 — Repo restructure & transport spike (no gameplay)
+### Phase 1 — Godot client & transport spike (no gameplay)
 - **Goal:** the skeleton of the real stack stands up and talks.
-- **Deliverables:** archive Veins specs; rename `veins` → `testament`; add the Godot
-  `client/`; reimplement the socket seam over raw WebSocket (`ws`) and drop socket.io;
-  one player moving authoritatively in an HTML5 export.
+- **Deliverables:** add the Godot `client/`; reimplement the socket seam over raw
+  WebSocket (`ws`) and drop socket.io; one player moving authoritatively in an HTML5 export.
 - **Exit gate:** browser round-trip works end to end; `pnpm -r test` green.
 
 ### Phase 2 — Protocol contract & shared codegen (no gameplay)
 - **Goal:** one language-neutral source of truth for the wire.
 - **Deliverables:** the JSON message envelope and event catalog in `src/shared`; the
-  `tools/` codegen emitting GDScript constants; retired server rules pruned from the build.
-- **Exit gate:** server and client share one protocol; server builds green with only kept tech.
+  `tools/` codegen emitting GDScript constants.
+- **Exit gate:** server and client share one protocol.
 
 ### Phase 3 — Expedition loop skeleton
 - **Goal:** the whole loop runs end to end with placeholder content.
@@ -56,7 +56,7 @@ are settled, and so every phase has a clear exit gate.
 
 ### Phase 5 — Combat & Incarnate v1
 - **Goal:** a full hunt is playable.
-- **Deliverables:** reskinned real-time combat ([systems/combat.md](systems/combat.md)); one
+- **Deliverables:** the melee + tools combat ([systems/combat.md](systems/combat.md)); one
   Incarnate with a hidden trait roll and signs; one non-trivial primary verb; reactive pressure;
   Surety/Recant; failure-as-Testament.
 - **Exit gate:** a complete expedition is winnable and losable, solo and in co-op, and both feel complete.

@@ -1,22 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import type { AimState, DungeonLayout, LobbyErrorEvent, PlayerId, RoomCode, PlayerState } from '@testament/shared';
-import { MAX_PLAYERS, MIN_PLAYERS_TO_START as GAME_MIN_PLAYERS, HEX_BOARD_RADIUS, PLAYER_MAX_HP, STARTER_RELICS } from '@testament/shared';
-
-// Solo play is supported (GAME_MIN_PLAYERS === 1). Set DEV_MIN_PLAYERS higher (e.g. 2)
-// to force co-op-only behaviour for testing.
-const MIN_PLAYERS_TO_START = parseInt(process.env['DEV_MIN_PLAYERS'] ?? String(GAME_MIN_PLAYERS), 10);
-import type { BleedClockTickEvent, RunEndedEvent, FloorAdvancedEvent } from '@testament/shared';
+import type { DungeonLayout, LobbyErrorEvent, PlayerId, RoomCode, PlayerState } from '@testament/shared';
+import { MAX_PLAYERS, MIN_PLAYERS_TO_START as GAME_MIN_PLAYERS, PLAYER_MAX_HP } from '@testament/shared';
 import { generateDungeon } from '../dungeon/bsp.js';
-import { isTestArenaEnabled, generateTestArenaDungeon, spawnTestArenaEnemies } from '../dungeon/testArena.js';
-import { buildInitialBoard } from '../board/layout.js';
-import { advanceBleedForRoom, extractRun } from '../bleed/clock.js';
-import { descendFloor } from '../floor/progression.js';
-import { spawnEnemies } from '../combat/spawn.js';
-import { drainRateForFloor, type Room } from './state.js';
+import type { Room } from './state.js';
 import { generateRoomCode } from './roomCode.js';
-import { createRng, hashSeed } from '../rng/seeded.js';
 
-const DUNGEON_START_HP = 1000;
+// Solo play is supported (GAME_MIN_PLAYERS === 1). Set DEV_MIN_PLAYERS higher
+// (e.g. 2) to force co-op-only behaviour for testing.
+const MIN_PLAYERS_TO_START = parseInt(process.env['DEV_MIN_PLAYERS'] ?? String(GAME_MIN_PLAYERS), 10);
 
 export type CreateRoomResult = { ok: true; room: Room };
 export type JoinRoomResult = { ok: true; room: Room } | { ok: false; error: LobbyErrorEvent };
@@ -69,25 +60,9 @@ export class RoomManager {
       status: 'lobby',
       runId: '',
       players: [hostId],
-      board: { slots: {} },
-      registry: new Map(),
-      phase: 'loot',
-      floor: 0,
-      bleedClock: { current: 0, max: 0, drainPerSecond: 0 },
-      outcome: null,
       dungeon: null,
-      enemies: new Map(),
       playerStates: new Map(),
-      aimStates: new Map(),
-      projectiles: new Map(),
-      weaponCooldowns: new Map(),
-      playerFiring: new Map(),
       playerMoveInputs: new Map(),
-      nextProjectileId: 0,
-      lootPools: {},
-      placedThisLootPhase: new Set(),
-      fireDurations: new Map(),
-      combatRng: createRng(0),
       disconnectedPlayers: new Set(),
     };
     this.rooms.set(code, room);
@@ -134,10 +109,9 @@ export class RoomManager {
 
   // Handles a socket disconnect. In a lobby it behaves like leave (player removed,
   // host reassigned, empty room deleted). In an in-progress run the player is RETAINED
-  // — kept in `players` so board ownership/synergy are unchanged (the same guarantee
-  // solo-play relies on) and recorded in `disconnectedPlayers` so they can rejoin.
-  // A run with every player disconnected is deleted so the tick loop never runs an
-  // abandoned room (R2).
+  // (kept in `players` so membership is unchanged) and recorded in `disconnectedPlayers`
+  // so they can rejoin. A run with every player disconnected is deleted so the tick loop
+  // never runs an abandoned room.
   markDisconnected(code: RoomCode, playerId: PlayerId): MarkDisconnectedResult {
     const room = this.rooms.get(code);
     if (!room || !room.players.includes(playerId)) return { ok: false };
@@ -159,7 +133,7 @@ export class RoomManager {
   }
 
   // Re-associates a returning player with an in-progress run they still belong to,
-  // clearing their disconnected flag. The caller emits STATE_RESYNC (R3, R4).
+  // clearing their disconnected flag. The caller emits STATE_RESYNC.
   rejoin(code: RoomCode, playerId: PlayerId): RejoinResult {
     const room = this.rooms.get(code);
     if (!room) {
@@ -175,6 +149,8 @@ export class RoomManager {
     return { ok: true, room };
   }
 
+  // Starts a run: generates the dungeon from a fresh seed and places every player
+  // at the entry room. No combat or rules yet (that is the Testament expedition loop).
   startRun(code: RoomCode): StartRunResult {
     const room = this.rooms.get(code);
     if (!room) {
@@ -188,130 +164,26 @@ export class RoomManager {
     }
 
     const runId = this.generateRunId();
-    // Test arena (TESTAMENT_TEST_ARENA=1): single room, fast loot. Off → real dungeon.
-    const dungeon = isTestArenaEnabled() ? generateTestArenaDungeon(runId) : generateDungeon(runId);
+    const dungeon = generateDungeon(runId);
 
     room.runId = runId;
     room.status = 'in-progress';
-    room.board = buildInitialBoard(room.players, HEX_BOARD_RADIUS);
-    room.floor = 1;
-    room.phase = 'combat';
-    room.bleedClock = {
-      current: DUNGEON_START_HP,
-      max: DUNGEON_START_HP,
-      drainPerSecond: drainRateForFloor(1),
-    };
     room.dungeon = dungeon;
-    // Initialise per-player HP and position (R2). Players start at the dungeon
-    // entry point (room-0 centre); position refinement belongs to the encounter spec.
-    const entryRoom = dungeon.rooms[0];
-    const startX = entryRoom ? entryRoom.rect.x + entryRoom.rect.width / 2 : 0;
-    const startY = entryRoom ? entryRoom.rect.y + entryRoom.rect.height / 2 : 0;
-    room.playerStates = new Map<string, PlayerState>(
+
+    // Players start at the dungeon entry point (room-0 centre).
+    const entry = dungeon.rooms[0];
+    const startX = entry ? entry.rect.x + entry.rect.width / 2 : 0;
+    const startY = entry ? entry.rect.y + entry.rect.height / 2 : 0;
+    room.playerStates = new Map<PlayerId, PlayerState>(
       room.players.map(id => [id, { hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP, downed: false, x: startX, y: startY }])
     );
-    // All players start in auto-aim mode; target is null until first combat tick (R4).
-    room.aimStates = new Map<string, AimState>(
-      room.players.map(id => [id, { mode: 'auto', targetId: null }])
-    );
-    // Weapon system: no projectiles yet, cooldowns start at 0 (fire immediately),
-    // move inputs start at rest (R3).
-    room.projectiles      = new Map();
-    room.weaponCooldowns  = new Map(room.players.map(id => [id, 0]));
-    // Default firing = true (auto-fire); desktop clients opt out via `set-firing`.
-    room.playerFiring     = new Map(room.players.map(id => [id, true]));
     room.playerMoveInputs = new Map(room.players.map(id => [id, { dx: 0, dy: 0 }]));
-    room.nextProjectileId = 0;
-    // Populate the relic registry with the starter set.
-    room.registry = new Map(STARTER_RELICS.map(r => [r.id, r]));
-    // Spawn floor-1 enemies immediately — run starts in combat, not loot.
-    // Test arena spawns exactly one of each enemy type for a quick clear.
-    room.enemies = isTestArenaEnabled()
-      ? spawnTestArenaEnemies(1, dungeon)
-      : spawnEnemies(runId, 1, dungeon);
-    // Loot pools are empty until enemies are cleared; filled per-player on phase
-    // transition to loot.
-    room.lootPools = {};
-    room.placedThisLootPhase = new Set();
-    // Combat RNG seeded from runId; advances across floors (not reset on descend).
-    room.combatRng = createRng(hashSeed(`${runId}#combat`));
-    room.enemiesKilled = 0;
-
-    // Doctrine scoring state — initialized fresh each run.
-    room.doctrineScores = { sanctum: 0, tumor: 0, chorus: 0, penitent: 0 };
-    room.doctrineThresholdsFired = new Set();
-    room.bleedDrainMult = 1;
-    room.chorusVotiveBonus = false;
-    room.tumorAggressionActive = false;
-    room.penitentFreeRevive = false;
-    room.lastAttackerByEnemy = new Map();
 
     return { ok: true, room, dungeon };
   }
 
-  // Rooms with an active run — drives the Bleed Clock tick loop.
+  // Rooms with an active run — drives the movement tick loop.
   activeRooms(): Room[] {
     return [...this.rooms.values()].filter(r => r.status === 'in-progress');
-  }
-
-  // Advances a room's Bleed Clock by dt seconds. Returns the tick (and a
-  // RUN_ENDED payload if the clock depleted), or undefined if no such room.
-  tickRoom(code: RoomCode, deltaSeconds: number):
-    | { tick: BleedClockTickEvent; ended: RunEndedEvent | null }
-    | undefined {
-    const room = this.rooms.get(code);
-    if (!room) return undefined;
-    return advanceBleedForRoom(room, deltaSeconds);
-  }
-
-  // Voluntary extraction. Ends an in-progress run as 'extracted'.
-  extractRoom(code: RoomCode): { ok: true; ended: RunEndedEvent } | { ok: false } {
-    const room = this.rooms.get(code);
-    if (!room) return { ok: false };
-    return extractRun(room);
-  }
-
-  // Descends a room to the next floor. Updates the dungeon, spawns enemies for
-  // the new floor, and transitions phase to combat (T11, R3).
-  descendRoom(code: RoomCode): { ok: true; event: FloorAdvancedEvent } | { ok: false } {
-    const room = this.rooms.get(code);
-    if (!room) return { ok: false };
-    const res = descendFloor(room); // sets room.floor, room.dungeon, room.phase='combat'
-    if (!res.ok) return { ok: false };
-    // Fire DoT does not persist across floor boundaries.
-    room.fireDurations = new Map();
-    // Test arena: keep every floor a single room with one enemy per type. Overrides
-    // the dungeon descendFloor just generated (and the FLOOR_ADVANCED payload) so the
-    // client renders the arena, not a real dungeon.
-    if (isTestArenaEnabled()) {
-      const arena = generateTestArenaDungeon(room.runId);
-      room.dungeon = arena;
-      res.event.dungeon = arena;
-      room.enemies = spawnTestArenaEnemies(room.floor, arena);
-    } else {
-      // Spawn enemies for the new floor (deterministic from runId + floor).
-      room.enemies = spawnEnemies(room.runId, room.floor, res.event.dungeon);
-    }
-    // Reposition every player to the new floor's entry room (room-0 centre), exactly
-    // as startRun does for floor 1. Without this, players descend "in place" — on a
-    // new dungeon that can put them inside a wall, and in the arena right on top of a
-    // fresh enemy spawn, where the enemy sprite renders behind the player (looks like
-    // "no enemies") while dealing immediate damage. HP/downed state carry over.
-    const entry = room.dungeon?.rooms[0];
-    if (entry) {
-      const ex = entry.rect.x + entry.rect.width / 2;
-      const ey = entry.rect.y + entry.rect.height / 2;
-      for (const [id, ps] of room.playerStates) {
-        room.playerStates.set(id, { ...ps, x: ex, y: ey });
-      }
-      res.event.playerPositions = Object.fromEntries(
-        [...room.playerStates].map(([id, ps]) => [id, { x: ps.x, y: ps.y }])
-      );
-    }
-    // If the dungeon somehow has no non-entry rooms (degenerate case), skip straight
-    // to loot phase — combat with zero enemies would flip phase on the first tick
-    // anyway, but doing it here avoids a spurious PHASE_CHANGED event.
-    if (room.enemies.size === 0) room.phase = 'loot';
-    return res;
   }
 }

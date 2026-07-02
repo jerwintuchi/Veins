@@ -1,0 +1,21 @@
+; Testament — Godot 4 client (Phase 1 transport spike).
+; Open this folder in Godot 4.x and press Play (F5). Requires the server running
+; on :3001 (from the repo root: `pnpm dev:server`).
+
+config_version=5
+
+[application]
+
+config/name="Testament Client"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=540
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

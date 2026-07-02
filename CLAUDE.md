@@ -1,10 +1,9 @@
 # Testament — Root Context
 
 > Testament is a cooperative hunting RPG with roguelike expedition structure.
-> You are hunter-scholars of the Collegium. The game is built on the technical
-> foundations of the Veins prototype (authoritative Node server, ephemeral rooms,
-> seeded procedural generation), which validated the multiplayer architecture this
-> game keeps. The Veins game design is retired: see `docs/archive/veins/`.
+> You are hunter-scholars of the Collegium. It runs on an authoritative Node
+> server (ephemeral in-memory rooms, seeded procedural generation) with a Godot
+> client. The reboot and design history live in `docs/DECISION_LOG.md`.
 
 @docs/README.md
 @docs/vision.md
@@ -35,6 +34,7 @@ TypeScript server and the GDScript client both honor the same message shapes.
 Phase: **Phase 4 — Core systems v1**. Next spec: Distributed Perception (spec 5).
 
 Completed Phase 4 specs:
+- `specs/raw-ws-transport/`: raw WebSocket transport (wsHub, protocol envelope) + Godot client spike
 - `specs/incarnate-signs/` (T39–T44): TraitRoll, SIGN_LEXICON, deriveSigns, generateTraitRoll
 - `specs/contract-generation/` (T45–T49): ContractRecord, generateContract, ContractIntel wire type
 - `specs/ambient-signs/` (T50–T53): signs in FIELD_STARTED and FieldSnapshot (reconnect)

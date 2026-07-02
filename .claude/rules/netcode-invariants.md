@@ -1,8 +1,7 @@
 # Netcode Invariants
 
 These invariants must hold at all times. If a proposed implementation would violate
-one, stop and flag it before writing code. They are inherited from the Veins
-prototype and survive the Testament reboot.
+one, stop and flag it before writing code. They are foundational and non-negotiable.
 
 ## I1 — Server is the only source of truth
 All game state lives in `src/server/`. Clients have a *render copy* derived from

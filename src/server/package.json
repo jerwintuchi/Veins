@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@testament/shared": "workspace:*",
-    "socket.io": "^4.7.0",
     "ws": "^8.21.0"
   },
   "devDependencies": {

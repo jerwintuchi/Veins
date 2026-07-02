@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import type { RoomSummary, JoinRoomRequest, RunStartedEvent, LobbyErrorEvent, LobbySnapshot, LobbyPlayer } from './lobby.js';
+import type { RoomSummary, JoinRoomRequest, LobbyErrorEvent, LobbySnapshot, LobbyPlayer } from './lobby.js';
 import type { ContractIntel } from './contract.js';
-import { MAX_PLAYERS, MIN_PLAYERS_TO_START, HEX_BOARD_RADIUS, MAX_ROOM_PLAYERS, ROOM_CODE_LENGTH, ROOM_CODE_ALPHABET } from './lobby.js';
+import { MAX_PLAYERS, MIN_PLAYERS_TO_START, MAX_ROOM_PLAYERS, ROOM_CODE_LENGTH, ROOM_CODE_ALPHABET } from './lobby.js';
 import type { RoomPhase } from './lobby.js';
 
 describe('lobby constants', () => {
   it('have the expected values', () => {
     expect(MAX_PLAYERS).toBe(4);
     expect(MIN_PLAYERS_TO_START).toBe(1); // solo play supported — see specs/solo-play
-    expect(HEX_BOARD_RADIUS).toBe(2);
   });
 });
 
@@ -26,13 +25,6 @@ describe('lobby types', () => {
     expect(summary.status).toBe('lobby');
     expect(join.playerId).toBe('p3');
     expect(err.code).toBe('ROOM_FULL');
-
-    // RunStartedEvent shape compiles (structurally checked).
-    const started: Pick<RunStartedEvent, 'board' | 'synergyMap'> = {
-      board: { slots: {} },
-      synergyMap: {},
-    };
-    expect(started.board.slots).toEqual({});
   });
 });
 

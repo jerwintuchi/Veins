@@ -3,9 +3,6 @@
 Append-only. Never edit a past entry; only add new ones. Each entry records a
 decision, the context that forced it, and the consequences that follow.
 
-The Veins prototype's decision log is preserved unaltered at
-[archive/veins/DECISION_LOG.md](archive/veins/DECISION_LOG.md).
-
 ---
 
 ## TD-001 — Reboot: Veins → Testament (2026-06-28)
@@ -458,3 +455,32 @@ does not violate vision.md non-negotiable 2. `deriveSigns` itself is unchanged a
 lexicon-completeness reference. All players still receive all signs; per-player
 channel filtering remains spec 5 (Distributed Perception). All 734 tests green
 (96 shared + 638 server).
+
+---
+
+> *Merge note (2026-07-02): the entry below was written on a parallel branch and
+> reuses the TD-019 identifier (a different TD-019, dated 2026-06-30, appears
+> above). Both are preserved verbatim; this log is append-only.*
+
+## TD-019 — Server stripped to a clean skeleton; prototype removed from the workspace (2026-06-29)
+
+**Decision.** Remove all retired prototype game code and references from the active
+workspace. Deleted the prototype game rules (board/synergy, bleed clock, doctrine,
+loot, relic effects) and the ranged-combat loop (weapon, enemy AI, spawn, auto-aim,
+tick, separation) from the server, plus the matching shared types. Deleted the
+`docs/archive/` and `specs/archive/` trees and the completed migration-plan doc.
+
+**Context.** The conservative "keep the combat substrate" cut proved impractical:
+foundational types (`PlayerId`) and the bleed clock lived inside prototype files, and
+the combat loop was fused with relic/synergy/doctrine. The clean cut keeps the
+genuinely reusable, transport-agnostic libraries plus the lobby/room lifecycle and
+removes the rest (which Testament rebuilds as melee combat and the expedition loop).
+
+**Consequences.** Kept: seeded RNG, BSP dungeon generation, collision, pathfinding,
+player movement, and the room / lobby / reconnection lifecycle, behind the
+`SocketIOServerLike` seam. The server is now a lobby + rooms + player-movement
+skeleton; both packages type-check clean and tests pass. `PlayerId` moved to
+`shared/ids.ts`, movement constants to `shared/player.ts`. Zero prototype-name
+references remain in `src/`; the only ones left are the historical entries in this
+append-only log (TD-001..002), which document the reboot itself. Git history
+preserves everything removed.
